@@ -19,7 +19,7 @@ The long-term goal is to extend this base with popular and effective Self-Superv
 The following features and improvements are planned for this project:
 
 ### Phase 1: Self-Supervised Pre-training - SimMIM
-
+- SimMIM paper review added - https://github.com/kristi700/Projects/blob/master/paper_reviews/Simple_Masked_Image_Modeling.pdf
 ### Phase 2: Self-Supervised Pre-training - DINO
 
 ### Phase 3: ViT Enhancements
