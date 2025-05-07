@@ -17,7 +17,7 @@ def setup_device():
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train ViT Model')
-    parser.add_argument('--config', type=str, default='configs/stl10.yaml',
+    parser.add_argument('--config', type=str, default='configs/stl10_unsupervised.yaml',
                         help='Path to configuration file')
     args = parser.parse_args()
     return args
@@ -26,21 +26,18 @@ def get_transforms(config):
     img_size = config['data']['img_size']
 
     train_transform = transforms.Compose([
-        transforms.RandomResizedCrop(img_size, scale=(0.8, 1.0)),
+        transforms.RandomResizedCrop(img_size, scale=(0.9, 1.0)),
         transforms.RandomHorizontalFlip(),
-        transforms.ColorJitter(0.4, 0.4, 0.4, 0.1),
-        transforms.RandomRotation(10),
         transforms.ToTensor(),
     ])
     val_transform = transforms.Compose([
         transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
     ])
-    print("Transforms defined.")
     return train_transform, val_transform
 
 def prepare_dataloaders(config, train_transform, val_transform):
-    # TODO - to separate func if more datasets
+    # TODO - to separate func!
     if config['training']['type'].lower() == 'supervised':
         if config['data']['dataset_name'].lower() == 'cifar10':
             full_dataset_train_transforms = CIFAR10Dataset(
@@ -57,12 +54,13 @@ def prepare_dataloaders(config, train_transform, val_transform):
                 config['data']['data_csv'], config['data']['data_dir'], transform=val_transform
             )
     elif config['training']['type'].lower() == 'unsupervised':
-            full_dataset_train_transforms = STL10UnsupervisedDataset(
-                config['data']['data_dir'], transform=train_transform
-            )
-            full_dataset_val_transforms = STL10UnsupervisedDataset(
-                config['data']['data_dir'], transform=val_transform
-            )
+            if config['data']['dataset_name'].lower() == 'stl10':
+                full_dataset_train_transforms = STL10UnsupervisedDataset(
+                    config['data']['data_dir'], transform=train_transform
+                )
+                full_dataset_val_transforms = STL10UnsupervisedDataset(
+                    config['data']['data_dir'], transform=val_transform
+                )
 
     total_size = len(full_dataset_train_transforms)
     val_size = int(total_size * config['data']['val_split'])
@@ -113,6 +111,9 @@ def main():
     train_transform, val_transform = get_transforms(config)
     train_loader, val_loader = prepare_dataloaders(config, train_transform, val_transform)
     model = build_model(config).to(device)
+
+    for i, image in enumerate(train_loader):
+        print(image.shape)
 
 if __name__ == "__main__":
     main()

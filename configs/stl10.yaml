@@ -17,6 +17,7 @@ model:
   dropout: 0.1
 
 training:
+  type: 'supervised'
   random_seed: 42
   batch_size: 256
   num_epochs: 100

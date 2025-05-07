@@ -38,7 +38,6 @@ def get_transforms(config):
         transforms.Resize((img_size, img_size)),
         transforms.ToTensor(),
     ])
-    print("Transforms defined.")
     return train_transform, val_transform
 
 def prepare_dataloaders(config, train_transform, val_transform):
