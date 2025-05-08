@@ -5,7 +5,7 @@ import torchvision.transforms as transforms
 
 from torch.utils.data import DataLoader, random_split, Subset
 from data.datasets import CIFAR10Dataset, STL10Dataset, STL10UnsupervisedDataset
-from vit_core.vit import ViT
+from vit_core.ssl.simmim.model import ViT
 from utils.config_parser import load_config
 
 # NOTE - will need refactoring (alongside /w supervised_train), for testing purposes as of rightnow!
@@ -94,12 +94,12 @@ def build_model(config):
     model = ViT(
         input_shape=image_shape,
         patch_size=config['model']['patch_size'],
-        num_classes=config['model']['num_classes'],
         embed_dim=config['model']['embed_dim'],
         num_blocks=config['model']['num_blocks'],
         num_heads=config['model']['num_heads'],
         mlp_dim=config['model']['mlp_dim'],
         dropout=config['model']['dropout'],
+        mask_ratio=config['model']['mask_ratio']
     )
     return model
 
@@ -113,7 +113,7 @@ def main():
     model = build_model(config).to(device)
 
     for i, image in enumerate(train_loader):
-        print(image.shape)
+        test = model(image)
 
 if __name__ == "__main__":
     main()

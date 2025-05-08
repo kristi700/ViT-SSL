@@ -1,19 +1,19 @@
 data:
   dataset_name: 'stl10'
-  data_dir: 'training_data/stl-10/train_images'
+  data_dir: 'training_data/stl10/unlabeled_images'
   val_split: 0.2
   num_workers: 4
   img_size: 192
 
 model:
   patch_size: 16
-  num_classes: 10 
   in_channels: 3 
   embed_dim: 384
   num_blocks: 3
   num_heads: 6
   mlp_dim: 1536
   dropout: 0.1
+  mask_ratio: 0.6
 
 training:
   type: 'unsupervised'
