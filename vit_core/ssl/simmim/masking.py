@@ -19,7 +19,7 @@ def simple_masking(patches: torch.Tensor, mask_ratio: float) -> Union[torch.Tens
     mask_indicies = [torch.randperm(num_patches, device=device)[:num_masked] for _ in range(batch_size)]
     mask_indicies = torch.stack(mask_indicies, dim=0)
     bool_mask = torch.zeros((batch_size, num_patches), dtype=torch.bool, device=device)
-    rows = torch.arange(mask_indicies.size(0), device=device).unsqueeze(1).expand_as(mask_indicies)
+    rows = torch.arange(mask_indicies.size(0), device=device).unsqueeze(1).expand_as(mask_indicies) # NOTE could be batch_size instead of mask_indicies.size(0)
     bool_mask[rows, mask_indicies] = True
 
     targets = patches[bool_mask]

@@ -1,2 +1,2 @@
 from .masking import simple_masking
-from .model import ViT
+from .model import SimMIMViT
