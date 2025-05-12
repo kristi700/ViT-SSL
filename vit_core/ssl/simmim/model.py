@@ -21,7 +21,7 @@ class SimMIMViT(nn.Module):
         self.encoder_blocks = nn.ModuleList(
             [
                 EncoderBlock(embed_dim, num_heads, mlp_dim, dropout)
-                for i in range(num_blocks)
+                for _ in range(num_blocks)
             ]
         )
         self.unfold = nn.Unfold(kernel_size=(patch_size, patch_size), stride=patch_size)
@@ -33,7 +33,7 @@ class SimMIMViT(nn.Module):
         self.mask_ratio = mask_ratio
         self.input_shape = input_shape
 
-    def forward(self, x: torch.Tensor, return_attn=False) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, return_bool_mask=False) -> torch.Tensor:
         patches =  torch.permute(self.unfold(x), (0, 2, 1)).to(x.device)
         patches, bool_mask, targets = simple_masking(patches, self.mask_ratio)
         patches = self.projection(patches)
@@ -48,7 +48,11 @@ class SimMIMViT(nn.Module):
         x = encoder_input_embeddings
 
         for encoder_block in self.encoder_blocks:
-            x, attn_probs = encoder_block(x, return_attn) # NOTE - here we always get the last one, might need some nicer implementation later
+            x, _ = encoder_block(x) # NOTE - here we always get the last one, might need some nicer implementation later
         encoder_outputs_for_masked_patches = x[bool_mask.squeeze(-1)]
         predicted_pixels = self.simmim_head(encoder_outputs_for_masked_patches)
-        return predicted_pixels, targets
+    
+        if return_bool_mask:
+            return predicted_pixels, targets, bool_mask
+        else:
+            return predicted_pixels, targets

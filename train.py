@@ -193,7 +193,7 @@ def main():
     )
 
     best_val_acc = 0.0
-    save_path = os.path.join(config['training']['checkpoint_dir'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
+    save_path = os.path.join(config['training']['checkpoint_dir'], config['training']['type'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
     for epoch in range(1, config['training']['num_epochs'] + 1):
         epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
         train_loss, train_acc = train_one_epoch(
@@ -214,7 +214,7 @@ def main():
         
         if val_acc > best_val_acc:
             best_val_acc = val_acc
-            print(f"✨ New best validation accuracy: {best_val_acc:.4f}. Saving model...")
+            print(f"New best validation accuracy: {best_val_acc:.4f}. Saving model...")
             checkpoint = {
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),

@@ -1,15 +1,18 @@
 import os
+import math
 import torch
 import argparse
 import torchvision.transforms as transforms
 
 from tqdm import tqdm
 from datetime import datetime
+from torcheval.metrics import PeakSignalNoiseRatio
 
+
+from utils.config_parser import load_config
+from vit_core.ssl.simmim.model import SimMIMViT
 from torch.utils.data import DataLoader, random_split, Subset
 from data.datasets import CIFAR10Dataset, STL10Dataset, STL10UnsupervisedDataset
-from vit_core.ssl.simmim.model import SimMIMViT
-from utils.config_parser import load_config
 
 # NOTE - will need refactoring (alongside /w supervised_train), for testing purposes as of rightnow!
 
@@ -106,12 +109,13 @@ def build_model(config):
     )
     return model
 
-def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch_desc="Training", scheduler=None, warmup_scheduler=None, current_epoch=None, warmup_epochs=0):
+def train_one_epoch(model, dataloader, criterion, optimizer, device, psnr, epoch_desc="Training", scheduler=None, warmup_scheduler=None, current_epoch=None, warmup_epochs=0):
     model.train()
     running_loss = 0
-    correct = 0
     total = 0
     pbar = tqdm(dataloader, desc=epoch_desc, leave=False)
+    psnr.reset()
+
     for inputs in pbar:
         inputs = inputs.to(device)
 
@@ -127,16 +131,16 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch_desc=
         running_loss += loss.item() * inputs.size(0)
         total += targets.size(0)
         pbar.set_postfix(loss=f"{loss.item():.4f}", lr=f"{optimizer.param_groups[0]['lr']:.1e}")
+        psnr.update(preds, targets)
 
     avg_loss = running_loss / total
-    return avg_loss
+    return avg_loss, psnr.compute()
 
-def evaluate(model, dataloader, criterion, device):
+def evaluate(model, dataloader, criterion, device, psnr):
     model.eval()
     total_loss = 0
-    correct = 0
     total = 0
-
+    psnr.reset()
     with torch.no_grad():
         for inputs in tqdm(dataloader, desc="Validation"):
             inputs = inputs.to(device)
@@ -144,9 +148,10 @@ def evaluate(model, dataloader, criterion, device):
             loss = criterion(preds, targets)
             total_loss += loss.item() * inputs.size(0)
             total += targets.size(0)
+            psnr.update(preds, targets)
 
     avg_loss = total_loss / total
-    return avg_loss
+    return avg_loss, psnr.compute()
 
 class LinearWarmupScheduler:
     def __init__(self, optimizer, warmup_steps, target_lr, start_lr):
@@ -179,6 +184,7 @@ def main():
     warmup_initial_lr = float(config['training']['warmup_initial_learning_rate'])
     criterion = torch.nn.L1Loss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=warmup_initial_lr, weight_decay=config['training']['weight_decay'])
+    psnr = PeakSignalNoiseRatio()
 
     num_epochs = config['training']['num_epochs']
     warmup_epochs = config['training']['warmup_epochs']
@@ -197,24 +203,40 @@ def main():
         start_lr = warmup_initial_lr
     )
 
-    #save_path = os.path.join(config['training']['checkpoint_dir'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
+    save_path = os.path.join(config['training']['checkpoint_dir'], config['training']['type'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
+    best_val_loss = math.inf
     for epoch in range(1, config['training']['num_epochs'] + 1):
         epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
-        train_loss = train_one_epoch(
-            model, train_loader, criterion, optimizer, device, epoch_desc,
+        train_loss, train_psnr = train_one_epoch(
+            model, train_loader, criterion, optimizer, device,
+            epoch_desc = epoch_desc,
             scheduler=main_scheduler,
             warmup_scheduler=warmup_scheduler,
             current_epoch=epoch,
-            warmup_epochs=warmup_epochs
+            warmup_epochs=warmup_epochs,
+            psnr = psnr
         )
-        val_loss = evaluate(model, val_loader, criterion, device)
+        val_loss, val_psnr = evaluate(model, val_loader, criterion, device, psnr = psnr)
 
         if epoch > warmup_epochs:
             main_scheduler.step()
 
         print(f"\nEpoch {epoch} Summary: "
-              f"Train Loss: {train_loss:.4f} | "
-              f"Val Loss: {val_loss:.4f}")
+              f"Train Loss: {train_loss:.4f} , Train PSNR: {train_psnr:.4f}| "
+              f"Val Loss: {val_loss:.4f} , Val PSNR: {val_psnr:.4f}")
+        
+        if best_val_loss > val_loss:
+            best_val_loss = val_loss
+            print(f"New best validation loss: {best_val_loss:.4f}. Saving model...")
+            checkpoint = {
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'best_val_loss': best_val_loss,
+                'config': config
+            }
+            os.makedirs(save_path, exist_ok=True)
+            torch.save(checkpoint, os.path.join(save_path, 'best_model.pth'))
         
 
 if __name__ == "__main__":
