@@ -128,8 +128,8 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, psnr, epoch
         if warmup_scheduler is not None and current_epoch <= warmup_epochs:
              warmup_scheduler.step()
 
-        running_loss += loss.item() * inputs.size(0)
-        total += targets.size(0)
+        running_loss += loss.item()
+        total += 1
         pbar.set_postfix(loss=f"{loss.item():.4f}", lr=f"{optimizer.param_groups[0]['lr']:.1e}")
         psnr.update(preds, targets)
 
@@ -138,19 +138,20 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, psnr, epoch
 
 def evaluate(model, dataloader, criterion, device, psnr):
     model.eval()
-    total_loss = 0
     total = 0
     psnr.reset()
+    running_loss=0
+
     with torch.no_grad():
         for inputs in tqdm(dataloader, desc="Validation"):
             inputs = inputs.to(device)
             preds, targets = model(inputs)
             loss = criterion(preds, targets)
-            total_loss += loss.item() * inputs.size(0)
-            total += targets.size(0)
+            running_loss += loss.item()
+            total += 1
             psnr.update(preds, targets)
 
-    avg_loss = total_loss / total
+    avg_loss = running_loss / total
     return avg_loss, psnr.compute()
 
 class LinearWarmupScheduler:
@@ -182,7 +183,7 @@ def main():
     model = build_model(config).to(device)
 
     warmup_initial_lr = float(config['training']['warmup_initial_learning_rate'])
-    criterion = torch.nn.L1Loss()
+    criterion = torch.nn.L1Loss(reduction='mean')
     optimizer = torch.optim.AdamW(model.parameters(), lr=warmup_initial_lr, weight_decay=config['training']['weight_decay'])
     psnr = PeakSignalNoiseRatio()
 

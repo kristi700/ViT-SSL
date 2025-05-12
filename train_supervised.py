@@ -95,7 +95,19 @@ def build_model(config):
         mlp_dim=config['model']['mlp_dim'],
         dropout=config['model']['dropout'],
     )
-    return model
+    if ['train']['type'].lower() == 'supervised':
+        return model
+    elif ['train']['type'].lower() == 'finetune':
+        ...
+    else:
+        raise KeyError('Not supported training type for train_supervised.py')
+    
+def load_pretrained_model(config, model: ViT):
+    pretrained_checkpoint = torch.load(config['training']['pretrained_path'])
+    pretrained_state_dict = pretrained_checkpoint['model_state_dict']
+    empty_state_dict = model['model_state_dict']
+
+    
 
 def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch_desc="Training", scheduler=None, warmup_scheduler=None, current_epoch=None, warmup_epochs=0):
     model.train()
