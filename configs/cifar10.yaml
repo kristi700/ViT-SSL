@@ -1,7 +1,7 @@
 data:
   dataset_name: 'cifar10'
-  data_csv: 'training_data/cifar-10/trainLabels.csv'
-  data_dir: 'training_data/cifar-10/train'
+  data_csv: 'training_data/cifar10/trainLabels.csv'
+  data_dir: 'training_data/cifar10/train'
   val_split: 0.2
   num_workers: 4
   img_size: 112

@@ -1,7 +1,10 @@
+import os
 import torch
 import argparse
 import torchvision.transforms as transforms
 
+from tqdm import tqdm
+from datetime import datetime
 
 from torch.utils.data import DataLoader, random_split, Subset
 from data.datasets import CIFAR10Dataset, STL10Dataset, STL10UnsupervisedDataset
@@ -103,6 +106,67 @@ def build_model(config):
     )
     return model
 
+def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch_desc="Training", scheduler=None, warmup_scheduler=None, current_epoch=None, warmup_epochs=0):
+    model.train()
+    running_loss = 0
+    correct = 0
+    total = 0
+    pbar = tqdm(dataloader, desc=epoch_desc, leave=False)
+    for inputs in pbar:
+        inputs = inputs.to(device)
+
+        optimizer.zero_grad()
+        preds, targets = model(inputs)
+        loss = criterion(preds, targets)
+        loss.backward()
+        optimizer.step()
+
+        if warmup_scheduler is not None and current_epoch <= warmup_epochs:
+             warmup_scheduler.step()
+
+        running_loss += loss.item() * inputs.size(0)
+        total += targets.size(0)
+        pbar.set_postfix(loss=f"{loss.item():.4f}", lr=f"{optimizer.param_groups[0]['lr']:.1e}")
+
+    avg_loss = running_loss / total
+    return avg_loss
+
+def evaluate(model, dataloader, criterion, device):
+    model.eval()
+    total_loss = 0
+    correct = 0
+    total = 0
+
+    with torch.no_grad():
+        for inputs in tqdm(dataloader, desc="Validation"):
+            inputs = inputs.to(device)
+            preds, targets = model(inputs)
+            loss = criterion(preds, targets)
+            total_loss += loss.item() * inputs.size(0)
+            total += targets.size(0)
+
+    avg_loss = total_loss / total
+    return avg_loss
+
+class LinearWarmupScheduler:
+    def __init__(self, optimizer, warmup_steps, target_lr, start_lr):
+        self.optimizer = optimizer
+        self._step = 0
+        self.warmup_steps = max(1, warmup_steps)
+        self.target_lr = target_lr
+        self.start_lr = start_lr
+        self.lr_steps = [
+            (target_lr - start_lr) / self.warmup_steps
+            for _ in optimizer.param_groups
+        ]
+
+    def step(self):
+        self._step += 1
+        if self._step <= self.warmup_steps:
+            lr_scale = float(self._step) / self.warmup_steps
+            for param_group in self.optimizer.param_groups:
+                param_group['lr'] = self.start_lr + lr_scale * (self.target_lr - self.start_lr)
+
 def main():
     args = parse_args()
     config = load_config(args.config)
@@ -112,8 +176,46 @@ def main():
     train_loader, val_loader = prepare_dataloaders(config, train_transform, val_transform)
     model = build_model(config).to(device)
 
-    for i, image in enumerate(train_loader):
-        predicted_pixels, targets = model(image.to(device))
+    warmup_initial_lr = float(config['training']['warmup_initial_learning_rate'])
+    criterion = torch.nn.L1Loss()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=warmup_initial_lr, weight_decay=config['training']['weight_decay'])
+
+    num_epochs = config['training']['num_epochs']
+    warmup_epochs = config['training']['warmup_epochs']
+    warmup_steps = warmup_epochs * len(train_loader)
+
+    main_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer,
+        T_max=num_epochs - warmup_epochs,
+        eta_min=float(config['training']['lr_final'])
+    )
+
+    warmup_scheduler = LinearWarmupScheduler(
+        optimizer,
+        warmup_steps=warmup_steps,
+        target_lr=float(config['training']['warmup_final_learning_rate']),
+        start_lr = warmup_initial_lr
+    )
+
+    #save_path = os.path.join(config['training']['checkpoint_dir'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
+    for epoch in range(1, config['training']['num_epochs'] + 1):
+        epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
+        train_loss = train_one_epoch(
+            model, train_loader, criterion, optimizer, device, epoch_desc,
+            scheduler=main_scheduler,
+            warmup_scheduler=warmup_scheduler,
+            current_epoch=epoch,
+            warmup_epochs=warmup_epochs
+        )
+        val_loss = evaluate(model, val_loader, criterion, device)
+
+        if epoch > warmup_epochs:
+            main_scheduler.step()
+
+        print(f"\nEpoch {epoch} Summary: "
+              f"Train Loss: {train_loss:.4f} | "
+              f"Val Loss: {val_loss:.4f}")
+        
 
 if __name__ == "__main__":
     main()

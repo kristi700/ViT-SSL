@@ -1,5 +1,4 @@
 import os
-import uuid
 import torch
 import argparse
 import torchvision.transforms as transforms
