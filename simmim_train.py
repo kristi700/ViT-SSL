@@ -6,6 +6,7 @@ import torchvision.transforms as transforms
 
 from tqdm import tqdm
 from datetime import datetime
+from ignite.metrics import SSIM
 from torcheval.metrics import PeakSignalNoiseRatio
 
 
@@ -109,19 +110,22 @@ def build_model(config):
     )
     return model
 
-def train_one_epoch(model, dataloader, criterion, optimizer, device, psnr, epoch_desc="Training", scheduler=None, warmup_scheduler=None, current_epoch=None, warmup_epochs=0):
+def train_one_epoch(config, model, dataloader, criterion, optimizer, device, psnr, ssim, epoch_desc="Training", scheduler=None, warmup_scheduler=None, current_epoch=None, warmup_epochs=0):
     model.train()
     running_loss = 0
     total = 0
     pbar = tqdm(dataloader, desc=epoch_desc, leave=False)
     psnr.reset()
 
+    patch_size = config['model']['patch_size']
+    in_channels = config['model']['in_channels']
+
     for inputs in pbar:
         inputs = inputs.to(device)
 
         optimizer.zero_grad()
-        preds, targets = model(inputs)
-        loss = criterion(preds, targets)
+        preds_flat, targets_flat = model(inputs)
+        loss = criterion(preds_flat, targets_flat)
         loss.backward()
         optimizer.step()
 
@@ -131,28 +135,39 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, psnr, epoch
         running_loss += loss.item()
         total += 1
         pbar.set_postfix(loss=f"{loss.item():.4f}", lr=f"{optimizer.param_groups[0]['lr']:.1e}")
-        psnr.update(preds, targets)
+
+        preds_patches = torch.clamp(preds_flat.reshape(-1, in_channels, patch_size, patch_size), 0, 1)
+        targets_patches = targets_flat.reshape(-1, in_channels, patch_size, patch_size)
+        psnr.update(preds_patches, targets_patches)
+        ssim.update((preds_patches, targets_patches))
 
     avg_loss = running_loss / total
-    return avg_loss, psnr.compute()
+    return avg_loss, psnr.compute(), ssim.compute()
 
-def evaluate(model, dataloader, criterion, device, psnr):
+def evaluate(config, model, dataloader, criterion, device, psnr, ssim):
     model.eval()
     total = 0
     psnr.reset()
     running_loss=0
 
+    patch_size = config['model']['patch_size']
+    in_channels = config['model']['in_channels']
+
     with torch.no_grad():
         for inputs in tqdm(dataloader, desc="Validation"):
             inputs = inputs.to(device)
-            preds, targets = model(inputs)
-            loss = criterion(preds, targets)
+            preds_flat, targets_flat = model(inputs)
+            loss = criterion(preds_flat, targets_flat)
             running_loss += loss.item()
             total += 1
-            psnr.update(preds, targets)
+
+            preds_patches = torch.clamp(preds_flat.reshape(-1, in_channels, patch_size, patch_size), 0, 1)
+            targets_patches = targets_flat.reshape(-1, in_channels, patch_size, patch_size)
+            psnr.update(preds_patches, targets_patches)
+            ssim.update((preds_patches, targets_patches))
 
     avg_loss = running_loss / total
-    return avg_loss, psnr.compute()
+    return avg_loss, psnr.compute(), ssim.compute()
 
 class LinearWarmupScheduler:
     def __init__(self, optimizer, warmup_steps, target_lr, start_lr):
@@ -185,7 +200,8 @@ def main():
     warmup_initial_lr = float(config['training']['warmup_initial_learning_rate'])
     criterion = torch.nn.L1Loss(reduction='mean')
     optimizer = torch.optim.AdamW(model.parameters(), lr=warmup_initial_lr, weight_decay=config['training']['weight_decay'])
-    psnr = PeakSignalNoiseRatio()
+    psnr = PeakSignalNoiseRatio(data_range=1.0)
+    ssim = SSIM(data_range=1.0)
 
     num_epochs = config['training']['num_epochs']
     warmup_epochs = config['training']['warmup_epochs']
@@ -208,23 +224,24 @@ def main():
     best_val_loss = math.inf
     for epoch in range(1, config['training']['num_epochs'] + 1):
         epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
-        train_loss, train_psnr = train_one_epoch(
-            model, train_loader, criterion, optimizer, device,
+        train_loss, train_psnr, train_ssim= train_one_epoch(
+            config, model, train_loader, criterion, optimizer, device,
             epoch_desc = epoch_desc,
             scheduler=main_scheduler,
             warmup_scheduler=warmup_scheduler,
             current_epoch=epoch,
             warmup_epochs=warmup_epochs,
-            psnr = psnr
+            psnr = psnr,
+            ssim=ssim
         )
-        val_loss, val_psnr = evaluate(model, val_loader, criterion, device, psnr = psnr)
+        val_loss, val_psnr, val_ssim = evaluate(config, model, val_loader, criterion, device, psnr = psnr,ssim=ssim)
 
         if epoch > warmup_epochs:
             main_scheduler.step()
 
         print(f"\nEpoch {epoch} Summary: "
-              f"Train Loss: {train_loss:.4f} , Train PSNR: {train_psnr:.4f}| "
-              f"Val Loss: {val_loss:.4f} , Val PSNR: {val_psnr:.4f}")
+              f"Train Loss: {train_loss:.4f} , Train PSNR: {train_psnr:.4f}, Train SSIM: {train_ssim:.4f}| "
+              f"Val Loss: {val_loss:.4f} , Val PSNR: {val_psnr:.4f}, Val SSIM: {val_ssim:.4f}")
         
         if best_val_loss > val_loss:
             best_val_loss = val_loss
