@@ -95,19 +95,48 @@ def build_model(config):
         mlp_dim=config['model']['mlp_dim'],
         dropout=config['model']['dropout'],
     )
-    if ['train']['type'].lower() == 'supervised':
+    if config['training']['type'].lower() == 'supervised':
         return model
-    elif ['train']['type'].lower() == 'finetune':
-        ...
+    elif config['training']['type'].lower() == 'finetune':
+        return load_pretrained_model(config, model)
     else:
         raise KeyError('Not supported training type for train_supervised.py')
     
-def load_pretrained_model(config, model: ViT):
+def load_pretrained_model(config, model: ViT) -> ViT:
     pretrained_checkpoint = torch.load(config['training']['pretrained_path'])
     pretrained_state_dict = pretrained_checkpoint['model_state_dict']
-    empty_state_dict = model['model_state_dict']
+    model_ft_state_dict = model.state_dict()
 
-    
+    new_state_dict = {}
+    for k, v in pretrained_state_dict.items():
+        if k in model_ft_state_dict:
+            if v.shape == model_ft_state_dict[k].shape:
+                new_state_dict[k] = v
+            else:
+                print(f"Shape mismatch for {k}: Pretrained {v.shape} vs Fine-tune {model_ft_state_dict[k].shape}")
+        elif k.startswith("projection.") and f"patch_embedding.{k}" in model_ft_state_dict:
+            new_key = f"patch_embedding.{k}"
+            if v.shape == model_ft_state_dict[new_key].shape:
+                new_state_dict[new_key] = v
+            else:
+                print(f"Shape mismatch for {new_key} (from {k})")
+
+        elif k == "positional_embedding": 
+            if "patch_embedding.positional_embedding" in model_ft_state_dict:
+                ft_pe = model_ft_state_dict["patch_embedding.positional_embedding"] # Shape (1, N+1, D)
+                if v.shape[1] == ft_pe.shape[1] - 1 and v.shape[2] == ft_pe.shape[2]:
+                    print(f"Interpolating positional embedding for {k}...")
+                    new_pe = torch.zeros_like(ft_pe)
+                    new_pe[:, 1:, :] = v 
+                    new_state_dict["patch_embedding.positional_embedding"] = new_pe
+                else:
+                    print(f"Cannot interpolate positional_embedding: Pretrained {v.shape} vs Fine-tune {ft_pe.shape}")
+        elif "simmim_head" in k or "mask_token" in k:
+            print(f"Skipping SimMIM specific key: {k}")
+        else:
+            print(f"Key {k} from pretrained checkpoint not found in fine-tuning model.")
+    model.load_state_dict(new_state_dict, strict=False)
+    return model
 
 def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch_desc="Training", scheduler=None, warmup_scheduler=None, current_epoch=None, warmup_epochs=0):
     model.train()
