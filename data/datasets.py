@@ -1,4 +1,5 @@
 import os
+import glob
 import torch
 import pandas as pd
 
@@ -52,3 +53,21 @@ class STL10Dataset(Dataset):
             image = self.transform(image)
 
         return image, label
+    
+class STL10UnsupervisedDataset(Dataset):
+    def __init__(self, root_dir, transform=None):
+        self.root_dir = root_dir
+        self.transform = transform
+        self.files = sorted(glob.glob(f'{root_dir}/*.png'))
+
+    def __len__(self):
+        return len(self.files)
+    
+    def __getitem__(self, idx):
+        img_name = self.files[idx]
+        image = Image.open(img_name)
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image

@@ -1,1 +1,1 @@
-from .datasets import CIFAR10Dataset, STL10Dataset
+from .datasets import CIFAR10Dataset, STL10Dataset, STL10UnsupervisedDataset

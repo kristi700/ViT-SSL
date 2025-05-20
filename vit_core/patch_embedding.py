@@ -47,6 +47,6 @@ class ManualPatchEmbedding(nn.Module):
         x = self.unfold(x)
         x = torch.permute(x, (0, 2, 1))
         x = self.linear(x)
-        x = torch.cat([ self.cls_token.repeat(x.shape[0], 1 ,1), x], dim=1)
+        x = torch.cat([self.cls_token.repeat(x.shape[0], 1 ,1), x], dim=1)
         x += self.positional_embedding
         return  x

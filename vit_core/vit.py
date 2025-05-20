@@ -29,6 +29,7 @@ class ViT(nn.Module):
             input_shape, embed_dim, patch_size
         )
         self.classification_head = MLPHead(embed_dim, num_classes)
+        
 
     def forward(self, x: torch.Tensor, return_attn=False) -> torch.Tensor:
         x = self.patch_embedding(x)

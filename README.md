@@ -13,13 +13,16 @@ The long-term goal is to extend this base with popular and effective Self-Superv
 *   **Vanilla Vision Transformer (ViT) Architecture**
 *   **Supervised Training Pipeline**
 *   **Evaluation & Visualization**
-
+*   **SimMIM training & Visualization**
+*   **Pretrained ViT Finetune**
 ## Project Roadmap & Planned Features
 
 The following features and improvements are planned for this project:
 
 ### Phase 1: Self-Supervised Pre-training - SimMIM
-
+- SimMIM paper review added - https://github.com/kristi700/Projects/blob/master/paper_reviews/Simple_Masked_Image_Modeling.pdf
+- SimMIM training implemented
+- SimMIM reconstruction implemented
 ### Phase 2: Self-Supervised Pre-training - DINO
 
 ### Phase 3: ViT Enhancements

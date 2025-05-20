@@ -17,13 +17,14 @@ model:
   dropout: 0.1
 
 training:
-  type: 'supervised'
+  type: 'finetune'
+  pretrained_path: 'checkpoints/unsupervised/2025_05_19_14_22_02/best_model.pth'
   random_seed: 42
   batch_size: 256
   num_epochs: 100
   warmup_initial_learning_rate: 1e-7
-  warmup_final_learning_rate: 1e-3
+  warmup_final_learning_rate: 5e-4
   warmup_epochs: 10
-  lr_final: 1e-6
+  lr_final: 1e-7
   weight_decay: 0.001
   checkpoint_dir: './checkpoints'
