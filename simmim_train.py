@@ -2,6 +2,7 @@ import os
 import math
 import torch
 import argparse
+import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 
 from tqdm import tqdm
@@ -188,6 +189,62 @@ class LinearWarmupScheduler:
             for param_group in self.optimizer.param_groups:
                 param_group['lr'] = self.start_lr + lr_scale * (self.target_lr - self.start_lr)
 
+class history():
+    def __init__(self, save_path):
+        self.save_path = save_path
+        self.train_loss = []
+        self.train_psnr = []
+        self.train_ssim = []
+        self.val_loss = []
+        self.val_psnr = []
+        self.val_ssim = []
+        self.lr = []
+
+    def update(self, lr, train_loss, train_psnr, train_ssim, val_loss, val_psnr, val_ssim):
+        self.lr.append(lr)
+        self.train_loss.append(train_loss)
+        self.train_psnr.append(train_psnr)
+        self.train_ssim.append(train_ssim)
+        self.val_loss.append(val_loss)
+        self.val_psnr.append(val_psnr)
+        self.val_ssim.append(val_ssim)
+
+    def _to_cpu(self):
+        to_float = lambda x: x.cpu().item() if torch.is_tensor(x) and x.is_cuda else (x.item() if torch.is_tensor(x) else x)
+
+        self.lr         = [to_float(x) for x in self.lr]
+        self.train_loss = [to_float(x) for x in self.train_loss]
+        self.train_psnr = [to_float(x) for x in self.train_psnr]
+        self.train_ssim = [to_float(x) for x in self.train_ssim]
+        self.val_loss   = [to_float(x) for x in self.val_loss]
+        self.val_psnr   = [to_float(x) for x in self.val_psnr]
+        self.val_ssim   = [to_float(x) for x in self.val_ssim]
+
+    def vizualize(self, num_epochs):
+        self._to_cpu()
+        epochs = range(1, num_epochs + 1)
+
+        plots = [
+            ('train_loss', [self.train_loss, self.val_loss], ['Train Loss','Val Loss'], 'Loss','loss.png'),
+            ('psnr',[self.train_psnr, self.val_psnr], ['Train PSNR','Val PSNR'],'PSNR', 'psnr.png'),
+            ('ssim',[self.train_ssim, self.val_ssim],['Train SSIM','Val SSIM'],'SSIM','ssim.png'),
+            ('lr', [self.lr], ['Learning Rate'], 'LR', 'lr.png'),
+        ]
+
+        for _, data_lists, labels, ylabel, fname in plots:
+            plt.figure(figsize=(6,4))
+            for data, lbl in zip(data_lists, labels):
+                plt.plot(epochs, data, label=lbl)
+            plt.xlabel('Epoch')
+            plt.ylabel(ylabel)
+            plt.legend()
+            plt.title(f'{ylabel} over Epochs')
+            path = os.path.join(self.save_path, fname)
+            plt.tight_layout()
+            plt.savefig(path)
+            plt.close()
+            print(f"Saved {fname}")
+
 def main():
     args = parse_args()
     config = load_config(args.config)
@@ -221,6 +278,7 @@ def main():
     )
 
     save_path = os.path.join(config['training']['checkpoint_dir'], config['training']['type'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
+    model_history = history(save_path)
     best_val_loss = math.inf
     for epoch in range(1, config['training']['num_epochs'] + 1):
         epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
@@ -235,6 +293,7 @@ def main():
             ssim=ssim
         )
         val_loss, val_psnr, val_ssim = evaluate(config, model, val_loader, criterion, device, psnr = psnr,ssim=ssim)
+        model_history.update(optimizer.param_groups[0]['lr'], train_loss, train_psnr, train_ssim, val_loss, val_psnr, val_ssim)
 
         if epoch > warmup_epochs:
             main_scheduler.step()
@@ -255,7 +314,8 @@ def main():
             }
             os.makedirs(save_path, exist_ok=True)
             torch.save(checkpoint, os.path.join(save_path, 'best_model.pth'))
-        
+
+    model_history.vizualize(num_epochs)
 
 if __name__ == "__main__":
     main()
