@@ -1,14 +1,10 @@
-import yaml
+from omegaconf import OmegaConf
 
 def load_config(config_path):
     try:
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-        print("Configuration loaded successfully:")
+        config = OmegaConf.load(config_path)
+        OmegaConf.resolve(config)
         return config
     except FileNotFoundError:
         print(f"Error: Config file not found at {config_path}")
-        exit(1)
-    except yaml.YAMLError as e:
-        print(f"Error parsing config file {config_path}: {e}")
         exit(1)

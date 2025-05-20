@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader, random_split, Subset
 
 from vit_core.vit import ViT
 from utils.config_parser import load_config
+from utils.train_utils import make_criterion, make_optimizer, make_schedulers
 
 def setup_device():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -212,26 +213,13 @@ def main():
     train_loader, val_loader = prepare_dataloaders(config, train_transform, val_transform)
     model = build_model(config).to(device)
 
-    warmup_initial_lr = float(config['training']['warmup_initial_learning_rate'])
-    criterion = torch.nn.CrossEntropyLoss(label_smoothing=0.1)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=warmup_initial_lr, weight_decay=config['training']['weight_decay'])
-
     num_epochs = config['training']['num_epochs']
     warmup_epochs = config['training']['warmup_epochs']
     warmup_steps = warmup_epochs * len(train_loader)
 
-    main_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer,
-        T_max=num_epochs - warmup_epochs,
-        eta_min=float(config['training']['lr_final'])
-    )
-
-    warmup_scheduler = LinearWarmupScheduler(
-        optimizer,
-        warmup_steps=warmup_steps,
-        target_lr=float(config['training']['warmup_final_learning_rate']),
-        start_lr = warmup_initial_lr
-    )
+    criterion = make_criterion(config)
+    optimizer = make_optimizer(config, model)
+    schedulers = make_schedulers(config, optimizer, num_epochs, warmup_steps)
 
     best_val_acc = 0.0
     save_path = os.path.join(config['training']['checkpoint_dir'], config['training']['type'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
@@ -239,15 +227,15 @@ def main():
         epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
         train_loss, train_acc = train_one_epoch(
             model, train_loader, criterion, optimizer, device, epoch_desc,
-            scheduler=main_scheduler,
-            warmup_scheduler=warmup_scheduler,
+            scheduler=schedulers['main'],
+            warmup_scheduler=schedulers['warmup'],
             current_epoch=epoch,
             warmup_epochs=warmup_epochs
         )
         val_loss, val_acc = evaluate(model, val_loader, criterion, device)
 
         if epoch > warmup_epochs:
-            main_scheduler.step()
+            schedulers['main'].step()
 
         print(f"\nEpoch {epoch} Summary: "
               f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "

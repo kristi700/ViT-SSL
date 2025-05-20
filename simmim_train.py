@@ -14,12 +14,14 @@ from torcheval.metrics import PeakSignalNoiseRatio
 from utils.config_parser import load_config
 from vit_core.ssl.simmim.model import SimMIMViT
 from torch.utils.data import DataLoader, random_split, Subset
+from utils.train_utils import make_criterion, make_optimizer, make_schedulers
 from data.datasets import CIFAR10Dataset, STL10Dataset, STL10UnsupervisedDataset
 
 # NOTE - will need refactoring (alongside /w supervised_train), for testing purposes as of rightnow!
 
 def setup_device():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device='cpu'
     print(f"Using device: {device}")
     return device
 
@@ -254,28 +256,15 @@ def main():
     train_loader, val_loader = prepare_dataloaders(config, train_transform, val_transform)
     model = build_model(config).to(device)
 
-    warmup_initial_lr = float(config['training']['warmup_initial_learning_rate'])
-    criterion = torch.nn.L1Loss(reduction='mean')
-    optimizer = torch.optim.AdamW(model.parameters(), lr=warmup_initial_lr, weight_decay=config['training']['weight_decay'])
-    psnr = PeakSignalNoiseRatio(data_range=1.0)
-    ssim = SSIM(data_range=1.0)
-
     num_epochs = config['training']['num_epochs']
     warmup_epochs = config['training']['warmup_epochs']
     warmup_steps = warmup_epochs * len(train_loader)
 
-    main_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer,
-        T_max=num_epochs - warmup_epochs,
-        eta_min=float(config['training']['lr_final'])
-    )
-
-    warmup_scheduler = LinearWarmupScheduler(
-        optimizer,
-        warmup_steps=warmup_steps,
-        target_lr=float(config['training']['warmup_final_learning_rate']),
-        start_lr = warmup_initial_lr
-    )
+    criterion = make_criterion(config)
+    optimizer = make_optimizer(config, model)
+    schedulers = make_schedulers(config, optimizer, num_epochs, warmup_steps)
+    psnr = PeakSignalNoiseRatio(data_range=1.0)
+    ssim = SSIM(data_range=1.0)
 
     save_path = os.path.join(config['training']['checkpoint_dir'], config['training']['type'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
     model_history = history(save_path)
@@ -285,8 +274,8 @@ def main():
         train_loss, train_psnr, train_ssim= train_one_epoch(
             config, model, train_loader, criterion, optimizer, device,
             epoch_desc = epoch_desc,
-            scheduler=main_scheduler,
-            warmup_scheduler=warmup_scheduler,
+            scheduler=schedulers['main'],
+            warmup_scheduler=schedulers['warmup'],
             current_epoch=epoch,
             warmup_epochs=warmup_epochs,
             psnr = psnr,
@@ -296,7 +285,7 @@ def main():
         model_history.update(optimizer.param_groups[0]['lr'], train_loss, train_psnr, train_ssim, val_loss, val_psnr, val_ssim)
 
         if epoch > warmup_epochs:
-            main_scheduler.step()
+            schedulers['main'].step()
 
         print(f"\nEpoch {epoch} Summary: "
               f"Train Loss: {train_loss:.4f} , Train PSNR: {train_psnr:.4f}, Train SSIM: {train_ssim:.4f}| "
