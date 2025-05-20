@@ -4,7 +4,7 @@ data:
   data_dir: 'training_data/stl10/train_images'
   val_split: 0.2
   num_workers: 4
-  img_size: 112
+  img_size: 192
 
 model:
   patch_size: 16
