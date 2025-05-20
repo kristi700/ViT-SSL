@@ -20,8 +20,7 @@ from data.datasets import CIFAR10Dataset, STL10Dataset, STL10UnsupervisedDataset
 # NOTE - will need refactoring (alongside /w supervised_train), for testing purposes as of rightnow!
 
 def setup_device():
-    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device='cpu'
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     return device
 
