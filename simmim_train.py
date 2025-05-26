@@ -2,20 +2,18 @@ import os
 import math
 import torch
 import argparse
-import matplotlib.pyplot as plt
-import torchvision.transforms as transforms
 
 from tqdm import tqdm
 from datetime import datetime
 from ignite.metrics import SSIM
 from torcheval.metrics import PeakSignalNoiseRatio
 
-
+from utils.history import TrainingHistory
 from utils.config_parser import load_config
 from vit_core.ssl.simmim.model import SimMIMViT
 from torch.utils.data import DataLoader, random_split, Subset
-from utils.train_utils import make_criterion, make_optimizer, make_schedulers
 from data.datasets import CIFAR10Dataset, STL10Dataset, STL10UnsupervisedDataset
+from utils.train_utils import make_criterion, make_optimizer, make_schedulers, make_transforms
 
 # NOTE - will need refactoring (alongside /w supervised_train), for testing purposes as of rightnow!
 
@@ -32,46 +30,35 @@ def parse_args():
     return args
 
 def get_transforms(config):
-    img_size = config['data']['img_size']
+    train_cfg = config['transforms']['train']
+    val_cfg   = config['transforms']['val']
+    return make_transforms(train_cfg), make_transforms(val_cfg)
 
-    train_transform = transforms.Compose([
-        transforms.RandomResizedCrop(img_size, scale=(0.9, 1.0)),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-    ])
-    val_transform = transforms.Compose([
-        transforms.Resize((img_size, img_size)),
-        transforms.ToTensor(),
-    ])
-    return train_transform, val_transform
+def _get_dataset(config, transform):
+    mode = config['training']['type'].lower()
+    dataset_name = config['data']['dataset_name'].lower()
+
+    if mode == 'supervised':
+        Warning("Supervised training mode is meant to be used with train_supervised.py!")
+        if dataset_name == 'cifar10':
+            return CIFAR10Dataset(config['data']['data_csv'], config['data']['data_dir'], transform)
+        elif dataset_name == 'stl10':
+            return STL10Dataset(config['data']['data_csv'], config['data']['data_dir'], transform)
+        else:
+            raise ValueError(f"Unknown supervised dataset {dataset_name}")
+    elif mode == 'unsupervised':
+        if dataset_name == 'stl10':
+            return STL10UnsupervisedDataset(config['data']['data_dir'], transform)
+        else:
+            raise ValueError(f"Unknown unsupervised dataset {dataset_name}")
+    else:
+        raise ValueError(f"Unknown training type {mode}")
 
 def prepare_dataloaders(config, train_transform, val_transform):
-    # TODO - to separate func!
-    if config['training']['type'].lower() == 'supervised':
-        if config['data']['dataset_name'].lower() == 'cifar10':
-            full_dataset_train_transforms = CIFAR10Dataset(
-                config['data']['data_csv'], config['data']['data_dir'], transform=train_transform
-            )
-            full_dataset_val_transforms = CIFAR10Dataset(
-                config['data']['data_csv'], config['data']['data_dir'], transform=val_transform
-            )
-        elif config['data']['dataset_name'].lower() == 'stl10':
-            full_dataset_train_transforms = STL10Dataset(
-                config['data']['data_csv'], config['data']['data_dir'], transform=train_transform
-            )
-            full_dataset_val_transforms = STL10Dataset(
-                config['data']['data_csv'], config['data']['data_dir'], transform=val_transform
-            )
-    elif config['training']['type'].lower() == 'unsupervised':
-            if config['data']['dataset_name'].lower() == 'stl10':
-                full_dataset_train_transforms = STL10UnsupervisedDataset(
-                    config['data']['data_dir'], transform=train_transform
-                )
-                full_dataset_val_transforms = STL10UnsupervisedDataset(
-                    config['data']['data_dir'], transform=val_transform
-                )
+    train_dataset_full = _get_dataset(config, train_transform)
+    val_dataset_full = _get_dataset(config, val_transform)
 
-    total_size = len(full_dataset_train_transforms)
+    total_size = len(train_dataset_full)
     val_size = int(total_size * config['data']['val_split'])
     train_size = total_size - val_size
 
@@ -79,8 +66,8 @@ def prepare_dataloaders(config, train_transform, val_transform):
     train_subset_indices, val_subset_indices = random_split(
         range(total_size), [train_size, val_size], generator=generator)
 
-    train_dataset = Subset(full_dataset_train_transforms, train_subset_indices.indices)
-    val_dataset = Subset(full_dataset_val_transforms, val_subset_indices.indices)
+    train_dataset = Subset(train_dataset_full, train_subset_indices.indices)
+    val_dataset = Subset(val_dataset_full, val_subset_indices.indices)
 
     train_loader = DataLoader(
         train_dataset,
@@ -171,80 +158,17 @@ def evaluate(config, model, dataloader, criterion, device, psnr, ssim):
     avg_loss = running_loss / total
     return avg_loss, psnr.compute(), ssim.compute()
 
-class LinearWarmupScheduler:
-    def __init__(self, optimizer, warmup_steps, target_lr, start_lr):
-        self.optimizer = optimizer
-        self._step = 0
-        self.warmup_steps = max(1, warmup_steps)
-        self.target_lr = target_lr
-        self.start_lr = start_lr
-        self.lr_steps = [
-            (target_lr - start_lr) / self.warmup_steps
-            for _ in optimizer.param_groups
-        ]
-
-    def step(self):
-        self._step += 1
-        if self._step <= self.warmup_steps:
-            lr_scale = float(self._step) / self.warmup_steps
-            for param_group in self.optimizer.param_groups:
-                param_group['lr'] = self.start_lr + lr_scale * (self.target_lr - self.start_lr)
-
-class history():
-    def __init__(self, save_path):
-        self.save_path = save_path
-        self.train_loss = []
-        self.train_psnr = []
-        self.train_ssim = []
-        self.val_loss = []
-        self.val_psnr = []
-        self.val_ssim = []
-        self.lr = []
-
-    def update(self, lr, train_loss, train_psnr, train_ssim, val_loss, val_psnr, val_ssim):
-        self.lr.append(lr)
-        self.train_loss.append(train_loss)
-        self.train_psnr.append(train_psnr)
-        self.train_ssim.append(train_ssim)
-        self.val_loss.append(val_loss)
-        self.val_psnr.append(val_psnr)
-        self.val_ssim.append(val_ssim)
-
-    def _to_cpu(self):
-        to_float = lambda x: x.cpu().item() if torch.is_tensor(x) and x.is_cuda else (x.item() if torch.is_tensor(x) else x)
-
-        self.lr         = [to_float(x) for x in self.lr]
-        self.train_loss = [to_float(x) for x in self.train_loss]
-        self.train_psnr = [to_float(x) for x in self.train_psnr]
-        self.train_ssim = [to_float(x) for x in self.train_ssim]
-        self.val_loss   = [to_float(x) for x in self.val_loss]
-        self.val_psnr   = [to_float(x) for x in self.val_psnr]
-        self.val_ssim   = [to_float(x) for x in self.val_ssim]
-
-    def vizualize(self, num_epochs):
-        self._to_cpu()
-        epochs = range(1, num_epochs + 1)
-
-        plots = [
-            ('train_loss', [self.train_loss, self.val_loss], ['Train Loss','Val Loss'], 'Loss','loss.png'),
-            ('psnr',[self.train_psnr, self.val_psnr], ['Train PSNR','Val PSNR'],'PSNR', 'psnr.png'),
-            ('ssim',[self.train_ssim, self.val_ssim],['Train SSIM','Val SSIM'],'SSIM','ssim.png'),
-            ('lr', [self.lr], ['Learning Rate'], 'LR', 'lr.png'),
-        ]
-
-        for _, data_lists, labels, ylabel, fname in plots:
-            plt.figure(figsize=(6,4))
-            for data, lbl in zip(data_lists, labels):
-                plt.plot(epochs, data, label=lbl)
-            plt.xlabel('Epoch')
-            plt.ylabel(ylabel)
-            plt.legend()
-            plt.title(f'{ylabel} over Epochs')
-            path = os.path.join(self.save_path, fname)
-            plt.tight_layout()
-            plt.savefig(path)
-            plt.close()
-            print(f"Saved {fname}")
+def _get_metrics_for_epoch(train_loss, train_psnr, train_ssim, val_loss, val_psnr, val_ssim, current_lr):
+    metrics_for_epoch = {
+        "train_loss": train_loss,
+        "train_psnr": train_psnr,
+        "train_ssim": train_ssim,
+        "val_loss": val_loss,
+        "val_psnr": val_psnr,
+        "val_ssim": val_ssim,
+        "learning_rate": current_lr
+    }
+    return metrics_for_epoch
 
 def main():
     args = parse_args()
@@ -266,7 +190,7 @@ def main():
     ssim = SSIM(data_range=1.0)
 
     save_path = os.path.join(config['training']['checkpoint_dir'], config['training']['type'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
-    model_history = history(save_path)
+    model_history = TrainingHistory(save_path)
     best_val_loss = math.inf
     for epoch in range(1, config['training']['num_epochs'] + 1):
         epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
@@ -281,7 +205,8 @@ def main():
             ssim=ssim
         )
         val_loss, val_psnr, val_ssim = evaluate(config, model, val_loader, criterion, device, psnr = psnr,ssim=ssim)
-        model_history.update(optimizer.param_groups[0]['lr'], train_loss, train_psnr, train_ssim, val_loss, val_psnr, val_ssim)
+        metrics = _get_metrics_for_epoch(train_loss, train_psnr, train_ssim, val_loss, val_psnr, val_ssim, optimizer.param_groups[0]['lr'])
+        model_history.update(metrics, epoch)
 
         if epoch > warmup_epochs:
             schedulers['main'].step()

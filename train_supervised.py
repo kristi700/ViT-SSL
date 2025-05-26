@@ -1,7 +1,6 @@
 import os
 import torch
 import argparse
-import torchvision.transforms as transforms
 
 from tqdm import tqdm
 from datetime import datetime
@@ -9,8 +8,9 @@ from data.datasets import CIFAR10Dataset, STL10Dataset
 from torch.utils.data import DataLoader, random_split, Subset
 
 from vit_core.vit import ViT
+from utils.history import TrainingHistory
 from utils.config_parser import load_config
-from utils.train_utils import make_criterion, make_optimizer, make_schedulers
+from utils.train_utils import make_criterion, make_optimizer, make_schedulers, make_transforms
 
 def setup_device():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -25,39 +25,31 @@ def parse_args():
     return args
 
 def get_transforms(config):
-    img_size = config['data']['img_size']
+    train_cfg = config['transforms']['train']
+    val_cfg   = config['transforms']['val']
+    return make_transforms(train_cfg), make_transforms(val_cfg)
 
-    train_transform = transforms.Compose([
-        transforms.RandomResizedCrop(img_size, scale=(0.8, 1.0)),
-        transforms.RandomHorizontalFlip(),
-        transforms.ColorJitter(0.4, 0.4, 0.4, 0.1),
-        transforms.RandomRotation(10),
-        transforms.ToTensor(),
-    ])
-    val_transform = transforms.Compose([
-        transforms.Resize((img_size, img_size)),
-        transforms.ToTensor(),
-    ])
-    return train_transform, val_transform
+def _get_dataset(config, transform):
+    mode = config['training']['type'].lower()
+    dataset_name = config['data']['dataset_name'].lower()
+
+    if mode == 'supervised':
+        if dataset_name == 'cifar10':
+            return CIFAR10Dataset(config['data']['data_csv'], config['data']['data_dir'], transform)
+        elif dataset_name == 'stl10':
+            return STL10Dataset(config['data']['data_csv'], config['data']['data_dir'], transform)
+        else:
+            raise ValueError(f"Unknown supervised dataset {dataset_name}")
+    elif mode == 'unsupervised':
+        raise NotImplementedError("For unsupervised training use simmim_train.py!")
+    else:
+        raise ValueError(f"Unknown training type {mode}")
 
 def prepare_dataloaders(config, train_transform, val_transform):
-    # TODO - to separate func if more datasets
-    if config['data']['dataset_name'].lower() == 'cifar10':
-        full_dataset_train_transforms = CIFAR10Dataset(
-            config['data']['data_csv'], config['data']['data_dir'], transform=train_transform
-        )
-        full_dataset_val_transforms = CIFAR10Dataset(
-            config['data']['data_csv'], config['data']['data_dir'], transform=val_transform
-        )
-    elif config['data']['dataset_name'].lower() == 'stl10':
-        full_dataset_train_transforms = STL10Dataset(
-            config['data']['data_csv'], config['data']['data_dir'], transform=train_transform
-        )
-        full_dataset_val_transforms = STL10Dataset(
-            config['data']['data_csv'], config['data']['data_dir'], transform=val_transform
-        )
+    train_dataset_full = _get_dataset(config, train_transform)
+    val_dataset_full = _get_dataset(config, val_transform)
 
-    total_size = len(full_dataset_train_transforms)
+    total_size = len(train_dataset_full)
     val_size = int(total_size * config['data']['val_split'])
     train_size = total_size - val_size
 
@@ -65,8 +57,8 @@ def prepare_dataloaders(config, train_transform, val_transform):
     train_subset_indices, val_subset_indices = random_split(
         range(total_size), [train_size, val_size], generator=generator)
 
-    train_dataset = Subset(full_dataset_train_transforms, train_subset_indices.indices)
-    val_dataset = Subset(full_dataset_val_transforms, val_subset_indices.indices)
+    train_dataset = Subset(train_dataset_full, train_subset_indices.indices)
+    val_dataset = Subset(val_dataset_full, val_subset_indices.indices)
 
     train_loader = DataLoader(
         train_dataset,
@@ -185,24 +177,15 @@ def evaluate(model, dataloader, criterion, device):
     acc = correct / total
     return avg_loss, acc
 
-class LinearWarmupScheduler:
-    def __init__(self, optimizer, warmup_steps, target_lr, start_lr):
-        self.optimizer = optimizer
-        self._step = 0
-        self.warmup_steps = max(1, warmup_steps)
-        self.target_lr = target_lr
-        self.start_lr = start_lr
-        self.lr_steps = [
-            (target_lr - start_lr) / self.warmup_steps
-            for _ in optimizer.param_groups
-        ]
-
-    def step(self):
-        self._step += 1
-        if self._step <= self.warmup_steps:
-            lr_scale = float(self._step) / self.warmup_steps
-            for param_group in self.optimizer.param_groups:
-                param_group['lr'] = self.start_lr + lr_scale * (self.target_lr - self.start_lr)
+def _get_metrics_for_epoch(train_loss, train_acc, val_loss, val_acc,current_lr):
+    metrics_for_epoch = {
+        "train_loss": train_loss,
+        "train_accuracy": train_acc,
+        "val_loss": val_loss,
+        "val_accuracy": val_acc,
+        "learning_rate": current_lr
+    }
+    return metrics_for_epoch
 
 def main():
     args = parse_args()
@@ -223,6 +206,7 @@ def main():
 
     best_val_acc = 0.0
     save_path = os.path.join(config['training']['checkpoint_dir'], config['training']['type'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
+    model_history = TrainingHistory(save_path)
     for epoch in range(1, config['training']['num_epochs'] + 1):
         epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
         train_loss, train_acc = train_one_epoch(
@@ -233,7 +217,8 @@ def main():
             warmup_epochs=warmup_epochs
         )
         val_loss, val_acc = evaluate(model, val_loader, criterion, device)
-
+        metrics = _get_metrics_for_epoch(train_loss, train_acc, val_loss, val_acc, optimizer.param_groups[0]['lr'])
+        model_history.update(metrics, epoch)
         if epoch > warmup_epochs:
             schedulers['main'].step()
 
@@ -254,7 +239,7 @@ def main():
             os.makedirs(save_path, exist_ok=True)
             torch.save(checkpoint, os.path.join(save_path, 'best_model.pth'))
 
-    print("Training finished.")
+    model_history.vizualize(num_epochs)
 
 if __name__ == "__main__":
     main()

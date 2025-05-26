@@ -45,3 +45,18 @@ training:
     warmup:
       name: LinearWarmupScheduler
       params: {}
+
+transforms:
+  train:
+    - name: RandomResizedCrop 
+      params:
+        size: ${data.img_size}
+        scale: [0.9, 1.0]
+    - name: RandomHorizontalFlip
+      params: {}
+    - name: ToTensor
+  val:
+    - name: Resize
+      params:
+        size: ["${data.img_size}", "${data.img_size}"]
+    - name: ToTensor

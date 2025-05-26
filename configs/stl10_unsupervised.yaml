@@ -18,8 +18,8 @@ model:
 training:
   type: 'unsupervised'
   random_seed: 42
-  batch_size: 128
-  num_epochs: 150
+  batch_size: 1
+  num_epochs: 2
   warmup_initial_learning_rate: 1e-7
   warmup_final_learning_rate: 1e-4
   warmup_epochs: 10
@@ -43,3 +43,18 @@ training:
     warmup:
       name: LinearWarmupScheduler
       params: {}
+
+transforms:
+  train:
+    - name: RandomResizedCrop 
+      params:
+        size: ${data.img_size}
+        scale: [0.9, 1.0]
+    - name: RandomHorizontalFlip
+      params: {}
+    - name: ToTensor
+  val:
+    - name: Resize
+      params:
+        size: ["${data.img_size}", "${data.img_size}"]
+    - name: ToTensor

@@ -1,5 +1,7 @@
 from torch import nn, optim
 from torch.optim import lr_scheduler
+from torchvision import transforms as T
+
 from .schedulers import LinearWarmupScheduler
 
 def make_criterion(config):
@@ -29,3 +31,11 @@ def make_schedulers(config, optimizer, num_epochs, warmup_steps):
         'main': main_cls(optimizer, **main_kwargs),
         'warmup': LinearWarmupScheduler(optimizer, **warm_kwargs),
     }
+
+def make_transforms(sequence):
+    ops = []
+    for entry in sequence:
+        cls = getattr(T, entry['name'])
+        params = entry.get('params') or {}
+        ops.append(cls(**params))
+    return T.Compose(ops)
