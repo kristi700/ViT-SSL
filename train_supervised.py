@@ -33,7 +33,7 @@ def _get_dataset(config, transform):
     mode = config['training']['type'].lower()
     dataset_name = config['data']['dataset_name'].lower()
 
-    if mode == 'supervised':
+    if mode == 'supervised' or mode == 'finetune':
         if dataset_name == 'cifar10':
             return CIFAR10Dataset(config['data']['data_csv'], config['data']['data_dir'], transform)
         elif dataset_name == 'stl10':
