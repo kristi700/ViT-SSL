@@ -12,7 +12,8 @@ def make_criterion(config):
 def make_optimizer(config, model):
     opt_config= config['training']['optimizer']
     cls = getattr(optim, opt_config['name'])
-    return cls(model.parameters(), **opt_config.get('params', {}))
+    trainable_params = [p for p in model.parameters() if p.requires_grad]
+    return cls(trainable_params, **opt_config.get('params', {}))
 
 def make_schedulers(config, optimizer, num_epochs, warmup_steps):
     sched_config = config['training']['lr_scheduler']

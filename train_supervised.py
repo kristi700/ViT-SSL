@@ -91,10 +91,18 @@ def build_model(config):
     if config['training']['type'].lower() == 'supervised':
         return model
     elif config['training']['type'].lower() == 'finetune':
-        return load_pretrained_model(config, model)
+        model =  load_pretrained_model(config, model)
+        if config['training']['freeze_backbone']:
+            for param in model.encoder_blocks.parameters():
+                param.requires_grad = False
+            for name, param in model.patch_embedding.named_parameters():
+                if 'cls_token' not in name: # NOTE - as SimMIM ViT didnt have CLS token, its initialized w/ 0 now - dont wanna freeze
+                    param.requires_grad = False
+        _check_loaded_model(model, config)
+        return model
     else:
         raise KeyError('Not supported training type for train_supervised.py')
-    
+
 def load_pretrained_model(config, model: ViT) -> ViT:
     pretrained_checkpoint = torch.load(config['training']['pretrained_path'])
     pretrained_state_dict = pretrained_checkpoint['model_state_dict']
@@ -128,8 +136,48 @@ def load_pretrained_model(config, model: ViT) -> ViT:
             print(f"Skipping SimMIM specific key: {k}")
         else:
             print(f"Key {k} from pretrained checkpoint not found in fine-tuning model.")
-    model.load_state_dict(new_state_dict, strict=False)
+    missing_keys, unexpected_keys = model.load_state_dict(new_state_dict, strict=False)
+    print(f"\nMissing keys: {missing_keys}\n")
+    print(f"Unexpected_keys keys: {unexpected_keys}\n")
     return model
+
+def _check_loaded_model(model, config):
+    print("\n=== Checking loaded model ===\n")
+
+    frozen = []
+    trainable = []
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            trainable.append(name)
+        else:
+            frozen.append(name)
+
+    print(f"Trainable parameters ({len(trainable)}):")
+    for name in trainable:
+        print(f"[✓] {name}")
+    
+    print(f"\nFrozen parameters ({len(frozen)}):")
+    for name in frozen:
+        print(f"[-] {name}")
+
+    if config['training']['type'].lower() == 'finetune':
+        pretrained_checkpoint = torch.load(config['training']['pretrained_path'], map_location=next(model.parameters()).device)
+        pretrained_state_dict = pretrained_checkpoint['model_state_dict']
+
+        matched = 0
+        mismatched = 0
+        for name, param in model.named_parameters():
+            if name in pretrained_state_dict:
+                pre_param = pretrained_state_dict[name]
+                if pre_param.shape == param.shape and torch.allclose(param.data, pre_param, atol=1e-5):
+                    matched += 1
+                else:
+                    print(f"[!] Weight mismatch in: {name}")
+                    mismatched += 1
+        print(f"\nMatched parameters from checkpoint: {matched}")
+        print(f"Mismatched parameters: {mismatched}")
+
+    print("\n=== Model check complete ===\n")
 
 def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch_desc="Training", scheduler=None, warmup_scheduler=None, current_epoch=None, warmup_epochs=0):
     model.train()
@@ -187,6 +235,13 @@ def _get_metrics_for_epoch(train_loss, train_acc, val_loss, val_acc,current_lr):
     }
     return metrics_for_epoch
 
+def _unfreeze_backbone(model):
+    for param in model.patch_embedding.parameters():
+        param.requires_grad = True
+    for param in model.encoder_blocks.parameters():
+        param.requires_grad = True
+    return model
+
 def main():
     args = parse_args()
     config = load_config(args.config)
@@ -209,6 +264,10 @@ def main():
     model_history = TrainingHistory(save_path)
     for epoch in range(1, config['training']['num_epochs'] + 1):
         epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
+
+        if config['training']['freeze_backbone'] and epoch > config['training']['freeze_backbone_epochs']:
+            model = _unfreeze_backbone(model)
+        
         train_loss, train_acc = train_one_epoch(
             model, train_loader, criterion, optimizer, device, epoch_desc,
             scheduler=schedulers['main'],
