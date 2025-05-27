@@ -267,6 +267,7 @@ def main():
 
         if config['training']['freeze_backbone'] and epoch > config['training']['freeze_backbone_epochs']:
             model = _unfreeze_backbone(model)
+            optimizer = make_optimizer(config, model)
         
         train_loss, train_acc = train_one_epoch(
             model, train_loader, criterion, optimizer, device, epoch_desc,
