@@ -95,12 +95,13 @@ class DINOViT(nn.Module):
         x = self.teacher_backbone(x)
         x = self.teacher_head(x)
         self._update_center(x.detach())
-        return x + self.center
+        return x
 
     def forward(self, multi_crop_views: List[torch.Tensor], num_global_views: int):
         """
         Performs both student and teacher models' forwarding methods. 
         """
+        # NOTE - we resize all to the same size for now, variable input sizes should be implemented later! 
         student_input_batch = torch.cat(multi_crop_views, dim=0)
         student_output = self._student_forward(student_input_batch)
 
