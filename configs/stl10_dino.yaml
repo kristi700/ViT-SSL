@@ -13,10 +13,14 @@ model:
   num_heads: 6
   mlp_dim: 1536
   dropout: 0.1
-  mask_ratio: 0.5
+  output_dim: 65536
+  center_momentum: 0.9
+  teacher_momentum: 0.996
 
 training:
-  type: 'unsupervised'
+  type: 'dino_unsupervised'
+  num_all_views: 10
+  num_global_views: 2
   random_seed: 42
   batch_size: 1
   num_epochs: 2
@@ -45,16 +49,20 @@ training:
       params: {}
 
 transforms:
-  train:
+  global_transform:
     - name: RandomResizedCrop 
       params:
         size: ${data.img_size}
-        scale: [0.9, 1.0]
+        scale: [0.5, 1.0]
     - name: RandomHorizontalFlip
       params: {}
     - name: ToTensor
-  val:
-    - name: Resize
+
+  local_transform:
+    - name: RandomResizedCrop 
       params:
-        size: ["${data.img_size}", "${data.img_size}"]
+        size: ${data.img_size}
+        scale: [0.05, 0.4]
+    - name: RandomHorizontalFlip
+      params: {}
     - name: ToTensor

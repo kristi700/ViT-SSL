@@ -33,7 +33,14 @@ def make_schedulers(config, optimizer, num_epochs, warmup_steps):
         'warmup': LinearWarmupScheduler(optimizer, **warm_kwargs),
     }
 
-def make_transforms(sequence):
+def get_transforms(config):
+    transform_cfg = config['transforms']
+    transforms_dict = {}
+    for key, sequence in transform_cfg.items():
+        transforms_dict[key] = _make_transforms(sequence)
+    return transforms_dict
+
+def _make_transforms(sequence):
     ops = []
     for entry in sequence:
         cls = getattr(T, entry['name'])

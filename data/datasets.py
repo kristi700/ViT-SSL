@@ -4,6 +4,7 @@ import torch
 import pandas as pd
 
 from PIL import Image
+from typing import List, Optional, Dict, Callable
 from torch.utils.data import Dataset
 
 class CIFAR10Dataset(Dataset):
@@ -55,7 +56,7 @@ class STL10Dataset(Dataset):
         return image, label
     
 class STL10UnsupervisedDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, root_dir: str, transform: Optional[Callable] = None):
         self.root_dir = root_dir
         self.transform = transform
         self.files = sorted(glob.glob(f'{root_dir}/*.png'))
@@ -66,8 +67,44 @@ class STL10UnsupervisedDataset(Dataset):
     def __getitem__(self, idx):
         img_name = self.files[idx]
         image = Image.open(img_name)
-
+        
         if self.transform:
             image = self.transform(image)
 
         return image
+    
+    
+class STL10DINODataset(Dataset):
+    def __init__(self, root_dir: str, transforms: Optional[Dict[str, Callable]] = None, num_all_views:Optional[int] = None, num_global_views:Optional[int] = None):
+        self.root_dir = root_dir
+        self.transforms = transforms
+        self.files = sorted(glob.glob(f'{root_dir}/*.png'))
+        self.num_all_views = num_all_views
+        self.num_global_views = num_global_views
+
+    def __len__(self):
+        return len(self.files)
+    
+    def __getitem__(self, idx):
+        img_name = self.files[idx]
+        image = Image.open(img_name)
+        image_views = self._get_dino_views(image)
+
+        return image_views
+    
+    def _get_dino_views(self, image: torch.Tensor) -> List[torch.Tensor]:
+        """
+        From the already transformed image, creates N views, M global views(area > image_area * 50%) and N-M local views (area < image_area * 50%)
+        """
+        global_views = self._get_global_views(image.copy())
+        local_views = self._get_local_views(image.copy())
+        global_views.extend(local_views)
+        return global_views
+    
+    def _get_global_views(self, image: torch.Tensor) -> List[torch.Tensor]:
+        return [self.transforms['global_transform'](image) for _ in range(self.num_global_views)]
+
+    def _get_local_views(self, image: torch.Tensor) -> List[torch.Tensor]:
+        num_local_views = self.num_all_views - self.num_global_views
+        return [self.transforms['local_transform'](image) for _ in range(num_local_views)]
+

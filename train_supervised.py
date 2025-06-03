@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, random_split, Subset
 from vit_core.vit import ViT
 from utils.history import TrainingHistory
 from utils.config_parser import load_config
-from utils.train_utils import make_criterion, make_optimizer, make_schedulers, make_transforms
+from utils.train_utils import make_criterion, make_optimizer, make_schedulers, get_transforms
 
 def setup_device():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -23,11 +23,6 @@ def parse_args():
                         help='Path to configuration file')
     args = parser.parse_args()
     return args
-
-def get_transforms(config):
-    train_cfg = config['transforms']['train']
-    val_cfg   = config['transforms']['val']
-    return make_transforms(train_cfg), make_transforms(val_cfg)
 
 def _get_dataset(config, transform):
     mode = config['training']['type'].lower()
@@ -45,9 +40,9 @@ def _get_dataset(config, transform):
     else:
         raise ValueError(f"Unknown training type {mode}")
 
-def prepare_dataloaders(config, train_transform, val_transform):
-    train_dataset_full = _get_dataset(config, train_transform)
-    val_dataset_full = _get_dataset(config, val_transform)
+def prepare_dataloaders(config, transforms):
+    train_dataset_full = _get_dataset(config, transforms['train'])
+    val_dataset_full = _get_dataset(config,  transforms['val'])
 
     total_size = len(train_dataset_full)
     val_size = int(total_size * config['data']['val_split'])
@@ -247,8 +242,8 @@ def main():
     config = load_config(args.config)
     device = setup_device()
     
-    train_transform, val_transform = get_transforms(config)
-    train_loader, val_loader = prepare_dataloaders(config, train_transform, val_transform)
+    transforms= get_transforms(config)
+    train_loader, val_loader = prepare_dataloaders(config, transforms)
     model = build_model(config).to(device)
 
     num_epochs = config['training']['num_epochs']
@@ -265,7 +260,7 @@ def main():
     for epoch in range(1, config['training']['num_epochs'] + 1):
         epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
 
-        if config['training']['freeze_backbone'] and epoch > config['training']['freeze_backbone_epochs']:
+        if config['training'].get('freeze_backbone', False) and epoch > config['training'].get('freeze_backbone_epochs', float('inf')):
             model = _unfreeze_backbone(model)
             optimizer = make_optimizer(config, model)
         
