@@ -15,16 +15,18 @@ model:
   dropout: 0.1
   output_dim: 65536
   center_momentum: 0.9
-  teacher_momentum: 0.996
+
 
 training:
   type: 'dino_unsupervised'
   student_temp: 0.1
   teacher_temp: 0.04
+  teacher_momentum_start: 0.996
+  teacher_momentum_final: 1
   num_all_views: 8
   num_global_views: 2
   random_seed: 42
-  batch_size: 64
+  batch_size: 16
   num_epochs: 150
   warmup_initial_learning_rate: 1e-7
   warmup_final_learning_rate: 1e-4

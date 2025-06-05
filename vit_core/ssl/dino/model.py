@@ -55,11 +55,9 @@ class DINOViT(nn.Module):
         dropout: float = 0.1,
         output_dim: int = 65536,
         center_momentum: float = 0.9,
-        teacher_momentum: float = 0.996
     ):
         super().__init__()
         self.center_momentum = center_momentum
-        self.teacher_momentum = teacher_momentum
 
         self.teacher_backbone = ViTBackbone(num_blocks, input_shape, embed_dim, patch_size, num_heads, mlp_dim, dropout)
         self.student_backbone = copy.deepcopy(self.teacher_backbone)
@@ -114,8 +112,8 @@ class DINOViT(nn.Module):
         return teacher_output, student_output
     
     @torch.no_grad()    
-    def momentum_update_teacher(self):
+    def momentum_update_teacher(self, teacher_momentum):
         for param_student_bb, param_teacher_bb in zip(self.student_backbone.parameters(), self.teacher_backbone.parameters()):
-            param_teacher_bb.data.mul_(self.teacher_momentum).add_((1 - self.teacher_momentum) * param_student_bb.detach().data)
+            param_teacher_bb.data.mul_(teacher_momentum).add_((1 - teacher_momentum) * param_student_bb.detach().data)
         for param_student_h, param_teacher_h in zip(self.student_head.parameters(), self.teacher_head.parameters()):
-            param_teacher_h.data.mul_(self.teacher_momentum).add_((1 - self.teacher_momentum) * param_student_h.detach().data)
+            param_teacher_h.data.mul_(teacher_momentum).add_((1 - teacher_momentum) * param_student_h.detach().data)

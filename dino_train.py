@@ -12,6 +12,7 @@ from vit_core.ssl.dino.loss import DINOLoss
 from utils.config_parser import load_config
 from vit_core.ssl.dino.model import DINOViT
 from torch.utils.data import DataLoader, random_split, Subset
+from vit_core.ssl.dino.dino_utils import DINOMomentumScheduler
 from utils.train_utils import make_optimizer, make_schedulers, get_transforms
 
 # NOTE - will need refactoring (alongside /w supervised_train), for testing purposes as of rightnow!
@@ -83,16 +84,15 @@ def build_model(config):
         dropout=config['model']['dropout'],
         output_dim=config['model']['output_dim'],
         center_momentum=config['model']['center_momentum'],
-        teacher_momentum=config['model']['teacher_momentum'],
     )
     return model
 
-def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch_desc="Training", scheduler=None, warmup_scheduler=None, current_epoch=None, warmup_epochs=0):
+def train_one_epoch(model, dataloader, criterion, optimizer, device, current_teach_momentum, epoch_desc="Training", scheduler=None, warmup_scheduler=None, current_epoch=None, warmup_epochs=0):
     model.train()
     running_loss = 0
     total = 0
     pbar = tqdm(dataloader, desc=epoch_desc, leave=False)
-    num_global_views = dataloader.dataset.dataset.num_global_views # TODO - might not be ideal like this 
+    num_global_views = dataloader.dataset.dataset.num_global_views # TODO - might not be ideal like this
     for inputs in pbar:
         inputs = [x.to(device) for x in inputs]
 
@@ -105,7 +105,7 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch_desc=
         loss = criterion(teacher_output, student_output, model.center)
         loss.backward()
         optimizer.step()
-        model.momentum_update_teacher()
+        model.momentum_update_teacher(current_teach_momentum)
         if warmup_scheduler is not None and current_epoch <= warmup_epochs:
              warmup_scheduler.step()
 
@@ -157,21 +157,23 @@ def main():
     criterion = DINOLoss(config.training.teacher_temp, config.training.student_temp)
     optimizer = make_optimizer(config, model)
     schedulers = make_schedulers(config, optimizer, num_epochs, warmup_steps)
-    # TODO - momentum scheduler!
+    momentum_schedule = DINOMomentumScheduler(config.training.teacher_momentum_start, config.training.teacher_momentum_final, num_epochs)
 
     save_path = os.path.join(config['training']['checkpoint_dir'], config['training']['type'], str(datetime.now().strftime('%Y_%m_%d_%H_%M_%S')))
     model_history = TrainingHistory(save_path)
     best_val_loss = math.inf
     for epoch in range(1, config['training']['num_epochs'] + 1):
         epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
+        current_teach_momentum = momentum_schedule.get_momentum(epoch)
         train_loss = train_one_epoch(
-            model, train_loader, criterion, optimizer, device,
+            model, train_loader, criterion, optimizer, device, current_teach_momentum,
             epoch_desc = epoch_desc,
             scheduler=schedulers['main'],
             warmup_scheduler=schedulers['warmup'],
             current_epoch=epoch,
             warmup_epochs=warmup_epochs,
         )
+        
         val_loss= evaluate(model, val_loader, criterion, device)
         metrics = _get_metrics_for_epoch(train_loss, val_loss, optimizer.param_groups[0]['lr'])
         model_history.update(metrics, epoch)
