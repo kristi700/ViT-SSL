@@ -12,25 +12,18 @@ class TrainingHistory:
         self.epoch_count = 0
 
     def update(self, metrics: Dict[str, Any], epoch: int):
-        if epoch > self.epoch_count:
-            self.epoch_count = epoch # shouldnt happen
-        
+        self.epoch_count = max(self.epoch_count, epoch)
         for name, value in metrics.items():
             if torch.is_tensor(value):
                 if value.is_cuda:
                     value = value.cpu()
-                if value.numel() ==1:
+                if value.numel() == 1:
                     value = value.item()
-
-            self.history[name] = value
+            
+            self.history[name].append(value)
     
     def _get_plot_configs(self):
-        metrics = {
-            name: getattr(self, name)
-            for name, val in vars(self).items()
-            if isinstance(val, list)
-        }
-
+        metrics = self.history
         groups: Dict[str, List[str]] = {}
         for name in metrics:
             base = name.split('_', 1)[1] if '_' in name else name
@@ -50,18 +43,23 @@ class TrainingHistory:
         return configs
 
     def vizualize(self, num_epochs: int):
+        """
+        Plot each group of metrics (e.g. train_loss vs val_loss on one figure, etc.).
+        """
         epochs_range = range(1, num_epochs + 1)
-        plots_configs = self._get_plot_configs()
-        for plot_info in plots_configs:
-            title = plot_info.get("title", "Metric Plot")
-            ylabel = plot_info.get("ylabel", "Value")
-            metrics_to_plot = plot_info.get("metrics_to_plot", [])
-            filename = plot_info.get("filename", f"{title.lower().replace(' ', '_')}.png")
+        plot_configs = self._get_plot_configs()
+        for plot_info in plot_configs:
+            title = plot_info["title"]
+            ylabel = plot_info["ylabel"]
+            metrics_to_plot = plot_info["metrics_to_plot"]
+            filename = plot_info["filename"]
 
             for metric_detail in metrics_to_plot:
                 metric_name = metric_detail["name"]
-                metric_label = metric_detail.get("label", metric_name)
-                data = self.get_metric(metric_name)
+                metric_label = metric_detail["label"]
+                data = self.history.get(metric_name, [])
+                if len(data) < num_epochs:
+                    continue
                 plt.plot(epochs_range, data, label=metric_label)
 
             plt.xlabel("Epoch")
@@ -69,7 +67,7 @@ class TrainingHistory:
             plt.title(title)
 
             if any(m["label"] for m in metrics_to_plot):
-                 plt.legend()
+                plt.legend()
 
             plt.grid(True, linestyle='--', alpha=0.7)
             plt.tight_layout()

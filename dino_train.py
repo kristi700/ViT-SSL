@@ -12,8 +12,8 @@ from vit_core.ssl.dino.loss import DINOLoss
 from utils.config_parser import load_config
 from vit_core.ssl.dino.model import DINOViT
 from torch.utils.data import DataLoader, random_split, Subset
-from vit_core.ssl.dino.dino_utils import DINOMomentumScheduler
 from utils.train_utils import make_optimizer, make_schedulers, get_transforms
+from vit_core.ssl.dino.dino_utils import DINOMomentumScheduler, center_norm, cosine_similarity, embedding_distribution
 
 # NOTE - will need refactoring (alongside /w supervised_train), for testing purposes as of rightnow!
 
@@ -93,6 +93,8 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, current_tea
     total = 0
     pbar = tqdm(dataloader, desc=epoch_desc, leave=False)
     num_global_views = dataloader.dataset.dataset.num_global_views # TODO - might not be ideal like this
+    epoch_cosine_sims, epoch_teacher_dists, epoch_student_dists = [], [], []
+
     for inputs in pbar:
         inputs = [x.to(device) for x in inputs]
 
@@ -109,37 +111,97 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, current_tea
         if warmup_scheduler is not None and current_epoch <= warmup_epochs:
              warmup_scheduler.step()
 
+        epoch_cosine_sims.append(cosine_similarity(teacher_output, student_output))
+        epoch_teacher_dists.append(embedding_distribution(teacher_output))
+        epoch_student_dists.append(embedding_distribution(student_output))
         running_loss += loss.item()
         total += 1
         pbar.set_postfix(loss=f"{loss.item():.4f}", lr=f"{optimizer.param_groups[0]['lr']:.1e}")
 
+    student_cols = list(zip(*epoch_student_dists))
+    student_avg_embed_dist = [torch.tensor(c).mean().item() for c in student_cols]
+    teacher_cols = list(zip(*epoch_student_dists))
+    teacher_avg_embed_dist = [torch.tensor(c).mean().item() for c in teacher_cols]
+    avg_cos_sim = torch.stack(epoch_cosine_sims, dim=0).mean().item()
     avg_loss = running_loss / total
-    return avg_loss
+
+    return avg_loss, teacher_avg_embed_dist, student_avg_embed_dist, avg_cos_sim
 
 def evaluate(model, dataloader, criterion, device):
     model.eval()
     total = 0
     running_loss=0
     num_global_views = dataloader.dataset.dataset.num_global_views # TODO - might not be ideal like this 
+    epoch_cosine_sims, epoch_teacher_dists, epoch_student_dists = [], [], []
 
     with torch.no_grad():
         for inputs in tqdm(dataloader, desc="Validation"):
             inputs = [x.to(device) for x in inputs]
             teacher_output, student_output = model(inputs, num_global_views)
+
+            teacher_output = teacher_output.view(num_global_views, int(teacher_output.shape[0] / num_global_views), teacher_output.shape[1])
+            student_output = student_output.view(len(inputs), int(student_output.shape[0] / len(inputs)),  student_output.shape[1])
+            epoch_cosine_sims.append(cosine_similarity(teacher_output, student_output))
+            epoch_teacher_dists.append(embedding_distribution(teacher_output))
+            epoch_student_dists.append(embedding_distribution(student_output))
+
             loss = criterion(teacher_output, student_output, model.center)
             running_loss += loss.item()
             total += 1
 
-
+    student_cols = list(zip(*epoch_student_dists))
+    student_avg_embed_dist = [torch.tensor(c).mean().item() for c in student_cols]
+    teacher_cols = list(zip(*epoch_student_dists))
+    teacher_avg_embed_dist = [torch.tensor(c).mean().item() for c in teacher_cols]
+    avg_cos_sim = torch.stack(epoch_cosine_sims, dim=0).mean().item()
     avg_loss = running_loss / total
-    return avg_loss
 
-def _get_metrics_for_epoch(train_loss, current_lr):
+    return avg_loss, teacher_avg_embed_dist, student_avg_embed_dist, avg_cos_sim
+
+def _get_metrics_for_epoch(center_norm, train_loss, train_teacher_embed_dist, train_student_embed_dist, train_cos_sim, val_loss, val_teacher_embed_dist, val_student_embed_dist, val_cos_sim, current_lr):
+    t_mean, t_std, t_var = train_teacher_embed_dist
+    s_mean, s_std, s_var = train_student_embed_dist
+
+    vt_mean, vt_std, vt_var = val_teacher_embed_dist
+    vs_mean, vs_std, vs_var = val_student_embed_dist
+
     metrics_for_epoch = {
+        "center_norm": center_norm,
         "train_loss": train_loss,
+        "train_teacher_embed_mean": t_mean,
+        "train_teacher_embed_std": t_std,
+        "train_teacher_embed_var": t_var,
+        "train_student_embed_mean": s_mean,
+        "train_student_embed_std": s_std,
+        "train_student_embed_var": s_var,
+        "train_cosine_similarity": train_cos_sim,
+        "validation_loss": val_loss,
+        "val_teacher_embed_mean": vt_mean,
+        "val_teacher_embed_std": vt_std,
+        "val_teacher_embed_var": vt_var,
+        "val_student_embed_mean": vs_mean,
+        "val_student_embed_std": vs_std,
+        "val_student_embed_var": vs_var,
+        "validation_cosine_similarity": val_cos_sim,
         "learning_rate": current_lr
     }
     return metrics_for_epoch
+
+def print_epoch_summary(epoch: int, metrics):
+
+    print(
+        f"\nEpoch {epoch} Summary: "
+        f"Center Norm: {metrics['center_norm']:.4f} | "
+        f"Train Loss: {metrics['train_loss']:.4f} | "
+        f"Train Teacher Embed (Mean: {metrics['train_teacher_embed_mean']:.4f}, Std: {metrics['train_teacher_embed_std']:.4f}, Var: {metrics['train_teacher_embed_var']:.4f}) | "
+        f"Train Student Embed (Mean: {metrics['train_student_embed_mean']:.4f}, Std: {metrics['train_student_embed_std']:.4f}, Var: {metrics['train_student_embed_var']:.4f}) | "
+        f"Train Cosine: {metrics['train_cosine_similarity']:.4f} | "
+        f"Val Loss: {metrics['validation_loss']:.4f} | "
+        f"Val Teacher Embed (Mean: {metrics['val_teacher_embed_mean']:.4f}, Std: {metrics['val_teacher_embed_std']:.4f}, Var: {metrics['val_teacher_embed_var']:.4f}) | "
+        f"Val Student Embed (Mean: {metrics['val_student_embed_mean']:.4f}, Std: {metrics['val_student_embed_std']:.4f}, Var: {metrics['val_student_embed_var']:.4f}) | "
+        f"Val Cosine: {metrics['validation_cosine_similarity']:.4f} | "
+        f"LR: {metrics['learning_rate']:.1e}"
+    )
 
 def main():
     args = parse_args()
@@ -165,7 +227,7 @@ def main():
     for epoch in range(1, config['training']['num_epochs'] + 1):
         epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
         current_teach_momentum = momentum_schedule.get_momentum(epoch)
-        train_loss = train_one_epoch(
+        train_loss, train_teacher_embed_dist, train_student_embed_dist, train_cos_sim= train_one_epoch(
             model, train_loader, criterion, optimizer, device, current_teach_momentum,
             epoch_desc = epoch_desc,
             scheduler=schedulers['main'],
@@ -174,16 +236,14 @@ def main():
             warmup_epochs=warmup_epochs,
         )
         
-        val_loss= evaluate(model, val_loader, criterion, device)
-        metrics = _get_metrics_for_epoch(train_loss, val_loss, optimizer.param_groups[0]['lr'])
+        val_loss, val_teacher_embed_dist, val_student_embed_dist, val_cos_sim= evaluate(model, val_loader, criterion, device)
+        metrics = _get_metrics_for_epoch(center_norm(model.center), train_loss, train_teacher_embed_dist, train_student_embed_dist, train_cos_sim, val_loss, val_teacher_embed_dist, val_student_embed_dist, val_cos_sim, optimizer.param_groups[0]['lr'])
         model_history.update(metrics, epoch)
 
         if epoch > warmup_epochs:
             schedulers['main'].step()
 
-        print(f"\nEpoch {epoch} Summary: "
-              f"Train Loss: {train_loss:.4f}| "
-              f"Val Loss: {val_loss:.4f}")
+        print_epoch_summary(epoch, metrics)
         
         if best_val_loss > val_loss:
             best_val_loss = val_loss
@@ -197,7 +257,7 @@ def main():
             }
             os.makedirs(save_path, exist_ok=True)
             torch.save(checkpoint, os.path.join(save_path, 'best_model.pth'))
-
+    
     model_history.vizualize(num_epochs)
 
 if __name__ == "__main__":
