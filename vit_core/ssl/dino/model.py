@@ -35,11 +35,12 @@ class ViTBackbone(nn.Module):
         x = self.patch_embedding(x)
         for encoder_block in self.encoder_blocks:
             x, attn_probs = encoder_block(x, return_attn) # NOTE - here we always get the last one, might need some nicer implementation later
+        cls_token_output = x[:, 0]
 
         if return_attn:
-            return x, attn_probs
+            return cls_token_output, attn_probs
         else:
-            return x
+            return cls_token_output
         
 
 class DINOViT(nn.Module):
@@ -110,5 +111,11 @@ class DINOViT(nn.Module):
         teacher_input_batch = torch.cat(multi_crop_views[:num_global_views], dim=0)
         teacher_output = self._teacher_forward(teacher_input_batch)
 
-        return student_output, teacher_output
-        
+        return teacher_output, student_output
+    
+    @torch.no_grad()    
+    def momentum_update_teacher(self):
+        for param_student_bb, param_teacher_bb in zip(self.student_backbone.parameters(), self.teacher_backbone.parameters()):
+            param_teacher_bb.data.mul_(self.teacher_momentum).add_((1 - self.teacher_momentum) * param_student_bb.detach().data)
+        for param_student_h, param_teacher_h in zip(self.student_head.parameters(), self.teacher_head.parameters()):
+            param_teacher_h.data.mul_(self.teacher_momentum).add_((1 - self.teacher_momentum) * param_student_h.detach().data)

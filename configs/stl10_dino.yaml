@@ -19,11 +19,13 @@ model:
 
 training:
   type: 'dino_unsupervised'
-  num_all_views: 10
+  student_temp: 0.1
+  teacher_temp: 0.04
+  num_all_views: 8
   num_global_views: 2
   random_seed: 42
-  batch_size: 1
-  num_epochs: 2
+  batch_size: 64
+  num_epochs: 150
   warmup_initial_learning_rate: 1e-7
   warmup_final_learning_rate: 1e-4
   warmup_epochs: 10

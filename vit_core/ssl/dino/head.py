@@ -19,3 +19,4 @@ class DINOHead(nn.Module):
         x =  self.mlp(x)
         x = F.normalize(x, dim=1)
         x = self.fully_connected(x)
+        return x

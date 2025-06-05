@@ -8,10 +8,11 @@ from datetime import datetime
 
 from utils.history import TrainingHistory
 from data.datasets import STL10DINODataset
+from vit_core.ssl.dino.loss import DINOLoss
 from utils.config_parser import load_config
 from vit_core.ssl.dino.model import DINOViT
 from torch.utils.data import DataLoader, random_split, Subset
-from utils.train_utils import make_criterion, make_optimizer, make_schedulers, get_transforms
+from utils.train_utils import make_optimizer, make_schedulers, get_transforms
 
 # NOTE - will need refactoring (alongside /w supervised_train), for testing purposes as of rightnow!
 
@@ -91,16 +92,20 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch_desc=
     running_loss = 0
     total = 0
     pbar = tqdm(dataloader, desc=epoch_desc, leave=False)
-
+    num_global_views = dataloader.dataset.dataset.num_global_views # TODO - might not be ideal like this 
     for inputs in pbar:
-        inputs = inputs.to(device)
+        inputs = [x.to(device) for x in inputs]
 
         optimizer.zero_grad()
-        preds_flat, targets_flat = model(inputs)
-        loss = criterion(preds_flat, targets_flat)
+        teacher_output, student_output = model(inputs, num_global_views)
+        
+        teacher_output = teacher_output.view(num_global_views, int(teacher_output.shape[0] / num_global_views), teacher_output.shape[1])
+        student_output = student_output.view(len(inputs), int(student_output.shape[0] / len(inputs)),  student_output.shape[1])
+        
+        loss = criterion(teacher_output, student_output, model.center)
         loss.backward()
         optimizer.step()
-
+        model.momentum_update_teacher()
         if warmup_scheduler is not None and current_epoch <= warmup_epochs:
              warmup_scheduler.step()
 
@@ -115,12 +120,13 @@ def evaluate(model, dataloader, criterion, device):
     model.eval()
     total = 0
     running_loss=0
+    num_global_views = dataloader.dataset.dataset.num_global_views # TODO - might not be ideal like this 
 
     with torch.no_grad():
         for inputs in tqdm(dataloader, desc="Validation"):
-            inputs = inputs.to(device)
-            preds_flat, targets_flat = model(inputs)
-            loss = criterion(preds_flat, targets_flat)
+            inputs = [x.to(device) for x in inputs]
+            teacher_output, student_output = model(inputs, num_global_views)
+            loss = criterion(teacher_output, student_output, model.center)
             running_loss += loss.item()
             total += 1
 
@@ -148,7 +154,7 @@ def main():
     warmup_epochs = config['training']['warmup_epochs']
     warmup_steps = warmup_epochs * len(train_loader)
 
-    criterion = make_criterion(config)
+    criterion = DINOLoss(config.training.teacher_temp, config.training.student_temp)
     optimizer = make_optimizer(config, model)
     schedulers = make_schedulers(config, optimizer, num_epochs, warmup_steps)
     # TODO - momentum scheduler!

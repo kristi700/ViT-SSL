@@ -1,7 +1,7 @@
 import torch
 
 from torch import nn
-from torch.nn.functional import softmax
+from torch.nn.functional import softmax, log_softmax
 
 class DINOLoss(nn.Module):
     def __init__(self, teacher_temp: float, student_temp: float):
@@ -14,6 +14,10 @@ class DINOLoss(nn.Module):
         Implemented as described in https://arxiv.org/pdf/2104.14294 - Algorithm 1.
         """
         teacher_output = teacher_output.detach() # stop gradient
-        student_probs = softmax(student_output / self.student_temp, dim=1)
+        student_probs = log_softmax(student_output / self.student_temp, dim=1)
         teacher_probs = softmax((teacher_output - center) / self.teacher_temp, dim=1)
-        return -(teacher_probs*torch.log(student_probs)).sum(dim=1).mean()
+        
+        teacher_probs = teacher_probs.unsqueeze(1)
+        student_probs = student_probs.unsqueeze(0)
+
+        return -(teacher_probs*student_probs).sum(dim=1).mean()
