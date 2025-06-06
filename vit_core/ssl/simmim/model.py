@@ -15,7 +15,7 @@ class SimMIMViT(nn.Module):
         num_heads: int = 8,
         mlp_dim: int = 3072,
         dropout: float = 0.1,
-        mask_ratio: float =  0.6,
+        mask_ratio: float = 0.6,
     ):
         super().__init__()
         self.encoder_blocks = nn.ModuleList(
@@ -25,33 +25,37 @@ class SimMIMViT(nn.Module):
             ]
         )
         self.unfold = nn.Unfold(kernel_size=(patch_size, patch_size), stride=patch_size)
-        self.projection = nn.Linear((input_shape[0] * patch_size *patch_size), embed_dim)
+        self.projection = nn.Linear(
+            (input_shape[0] * patch_size * patch_size), embed_dim
+        )
         self.mask_token = nn.Parameter(torch.randn(1, 1, embed_dim))
-        self.positional_embedding = nn.Parameter(torch.rand(1, (input_shape[1] // patch_size) ** 2, embed_dim))
-        self.simmim_head = nn.Linear(embed_dim, input_shape[0] * patch_size * patch_size)
+        self.positional_embedding = nn.Parameter(
+            torch.rand(1, (input_shape[1] // patch_size) ** 2, embed_dim)
+        )
+        self.simmim_head = nn.Linear(
+            embed_dim, input_shape[0] * patch_size * patch_size
+        )
 
         self.mask_ratio = mask_ratio
         self.input_shape = input_shape
 
     def forward(self, x: torch.Tensor, return_bool_mask=False) -> torch.Tensor:
-        patches =  torch.permute(self.unfold(x), (0, 2, 1)).to(x.device)
+        patches = torch.permute(self.unfold(x), (0, 2, 1)).to(x.device)
         patches, bool_mask, targets = simple_masking(patches, self.mask_ratio)
         patches = self.projection(patches)
         # NOTE - for now we wont as CLS as pretraining doesnt require it (will be included in the later head)
         bool_mask = bool_mask.unsqueeze(-1)
-        encoder_input_embeddings = torch.where(
-            bool_mask,
-            self.mask_token,
-            patches
-        )
+        encoder_input_embeddings = torch.where(bool_mask, self.mask_token, patches)
         encoder_input_embeddings += self.positional_embedding
         x = encoder_input_embeddings
 
         for encoder_block in self.encoder_blocks:
-            x, _ = encoder_block(x) # NOTE - here we always get the last one, might need some nicer implementation later
+            x, _ = encoder_block(
+                x
+            )  # NOTE - here we always get the last one, might need some nicer implementation later
         encoder_outputs_for_masked_patches = x[bool_mask.squeeze(-1)]
         predicted_pixels = self.simmim_head(encoder_outputs_for_masked_patches)
-    
+
         if return_bool_mask:
             return predicted_pixels, targets, bool_mask
         else:

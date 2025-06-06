@@ -29,12 +29,13 @@ class ViT(nn.Module):
             input_shape, embed_dim, patch_size
         )
         self.classification_head = MLPHead(embed_dim, num_classes)
-        
 
     def forward(self, x: torch.Tensor, return_attn=False) -> torch.Tensor:
         x = self.patch_embedding(x)
         for encoder_block in self.encoder_blocks:
-            x, attn_probs = encoder_block(x, return_attn) # NOTE - here we always get the last one, might need some nicer implementation later
+            x, attn_probs = encoder_block(
+                x, return_attn
+            )  # NOTE - here we always get the last one, might need some nicer implementation later
         cls_token_output = x[:, 0]
         logits = self.classification_head(cls_token_output)
 

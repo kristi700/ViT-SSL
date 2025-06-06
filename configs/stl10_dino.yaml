@@ -16,6 +16,15 @@ model:
   output_dim: 65536
   center_momentum: 0.9
 
+metrics: # NOTE - train_loss, val_loss logged by default
+  - "CenterNorm"
+  - "TeacherMean"
+  - "TeacherSTD"
+  - "TeacherVar"
+  - "StudentMean"
+  - "StudentSTD"
+  - "StudentVar"
+  - "CosineSim"
 
 training:
   type: 'dino_unsupervised'
@@ -26,8 +35,8 @@ training:
   num_all_views: 8
   num_global_views: 2
   random_seed: 42
-  batch_size: 16
-  num_epochs: 150
+  batch_size: 2
+  num_epochs: 3
   warmup_initial_learning_rate: 1e-7
   warmup_final_learning_rate: 1e-4
   warmup_epochs: 10

@@ -3,6 +3,7 @@ import pytest
 
 from vit_core.vit import ViT
 
+
 @pytest.fixture(scope="module")
 def params():
     """Test parameters"""

@@ -16,6 +16,9 @@ model:
   mlp_dim: 1536
   dropout: 0.1
 
+metrics: # NOTE - train_loss, val_loss logged by default
+  - "Accuracy"
+
 training:
   type: 'supervised'
   random_seed: 42

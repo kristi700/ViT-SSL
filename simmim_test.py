@@ -177,7 +177,9 @@ def main_test():
     with torch.no_grad():
         output, targets, bool_mask = model(img_tensor, return_bool_mask=True)
 
-    visualize_simmim_reconstruction(img_tensor.squeeze(0), bool_mask.squeeze(0), output, targets, config)
+    visualize_simmim_reconstruction(
+        img_tensor.squeeze(0), bool_mask.squeeze(0), output, targets, config
+    )
 
 
 if __name__ == "__main__":

@@ -32,6 +32,7 @@ def load_config(config_path):
         config = yaml.safe_load(f)
     return config
 
+
 def build_model(config):
     """Instantiates the ViT model from configuration."""
     image_shape = (
@@ -77,6 +78,7 @@ def load_model_for_eval(checkpoint_path, device):
         return model, config
     except Exception as e:
         print(f"Error loading checkpoint from {checkpoint_path}: {e}")
+
 
 def get_inference_transforms(config):
     """Gets the transforms for inference (matching validation)."""
@@ -149,6 +151,7 @@ def visualize(
     plt.tight_layout()
     plt.savefig(output_filename, bbox_inches="tight", pad_inches=0.1)
 
+
 def main_test():
     parser = argparse.ArgumentParser(
         description="Test ViT Model and Visualize Attention"
@@ -172,9 +175,7 @@ def main_test():
         return
 
     img_pil = Image.open(args.image).convert("RGB")
-    img_pil = img_pil.resize(
-        (config["data"]["img_size"], config["data"]["img_size"])
-    )
+    img_pil = img_pil.resize((config["data"]["img_size"], config["data"]["img_size"]))
 
     inference_transform = get_inference_transforms(config)
     img_tensor = inference_transform(img_pil).unsqueeze(0).to(device)
@@ -198,6 +199,7 @@ def main_test():
     patch_size = config["model"]["patch_size"]
     attention_map = process_attention(last_attn_probs, image_size_hw, patch_size)
     visualize(img_pil, attention_map, prediction_text)
+
 
 if __name__ == "__main__":
     main_test()

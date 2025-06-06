@@ -3,6 +3,7 @@ import pytest
 
 from vit_core.mlp_head import MLPHead
 
+
 @pytest.fixture(scope="module")
 def params():
     """Test parameters"""
@@ -16,10 +17,12 @@ def mlp_head_model(params):
     model.eval()
     return model
 
+
 @pytest.fixture
 def sample_input(params):
     """Provides sample input tensor (batch of CLS token embeddings)."""
     return torch.rand(params["batch_size"], params["d_model"])
+
 
 def test_mlp_head_forward_shape(mlp_head_model, sample_input, params):
     """Tests the output shape of the forward pass."""

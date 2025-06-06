@@ -1,3 +1,4 @@
+from .metrics import MetricHandler
 from .history import TrainingHistory
 
 from .config_parser import load_config

@@ -3,6 +3,7 @@ import pytest
 
 from vit_core.encoder_block import EncoderBlock
 
+
 @pytest.fixture(scope="module")
 def params():
     """Test parameters"""
@@ -82,7 +83,7 @@ def test_encoder_block_dropout_behavior(params, sample_input):
     assert not torch.allclose(
         output_train1, output_train2, atol=1e-7
     ), "Two forward passes in train mode produced the same output with dropout > 0."
-    
+
     block_with_dropout.eval()
     output_eval_again = block_with_dropout(sample_input)
     assert torch.allclose(

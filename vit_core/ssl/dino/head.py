@@ -3,6 +3,7 @@ import torch.nn.functional as F
 from torch import nn
 from torch.nn.utils import weight_norm
 
+
 class DINOHead(nn.Module):
     def __init__(self, embed_dim, output_dim, hidden_dim=2048):
         super().__init__()
@@ -11,12 +12,14 @@ class DINOHead(nn.Module):
             nn.GELU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.GELU(),
-            nn.Linear(hidden_dim, embed_dim)
+            nn.Linear(hidden_dim, embed_dim),
         )
-        self.fully_connected = nn.Linear(embed_dim, output_dim) # NOTE - weightnorm is to be added (cant deepcopy) - weight_norm(nn.Linear(embed_dim, output_dim), name="weight")
+        self.fully_connected = nn.Linear(
+            embed_dim, output_dim
+        )  # NOTE - weightnorm is to be added (cant deepcopy) - weight_norm(nn.Linear(embed_dim, output_dim), name="weight")
 
     def forward(self, x):
-        x =  self.mlp(x)
+        x = self.mlp(x)
         x = F.normalize(x, dim=1)
         x = self.fully_connected(x)
         return x

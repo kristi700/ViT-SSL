@@ -4,6 +4,7 @@ import pytest
 
 from vit_core.patch_embedding import ConvolutionalPatchEmbedding, ManualPatchEmbedding
 
+
 @pytest.fixture(scope="module")
 def params():
     """Test parameters"""
