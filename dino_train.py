@@ -3,7 +3,6 @@ import math
 import torch
 import argparse
 
-from tqdm import tqdm
 from datetime import datetime
 
 from utils.logger import Logger
@@ -116,21 +115,20 @@ def train_one_epoch(
     optimizer,
     device,
     current_teach_momentum,
-    epoch_desc="Training",
+    logger: Logger = None,
     scheduler=None,
     warmup_scheduler=None,
-    current_epoch=None,
+    epoch=None,
     warmup_epochs=0,
 ):
     model.train()
     running_loss = 0
     total = 0
-    pbar = tqdm(dataloader, desc=epoch_desc, leave=False)
     num_global_views = (
         dataloader.dataset.dataset.num_global_views
     )  # TODO - might not be ideal like this
 
-    for inputs in pbar:
+    for inputs in dataloader:
         inputs = [x.to(device) for x in inputs]
 
         optimizer.zero_grad()
@@ -151,21 +149,19 @@ def train_one_epoch(
         loss.backward()
         optimizer.step()
         model.momentum_update_teacher(current_teach_momentum)
-        if warmup_scheduler is not None and current_epoch <= warmup_epochs:
+        if warmup_scheduler is not None and epoch <= warmup_epochs:
             warmup_scheduler.step()
 
         running_loss += loss.item()
         total += 1
-        pbar.set_postfix(
-            loss=f"{loss.item():.4f}", lr=f"{optimizer.param_groups[0]['lr']:.1e}"
-        )
 
+    logger.log_step(epoch, "Train")
     avg_loss = running_loss / total
 
     return avg_loss, teacher_output, student_output
 
 
-def evaluate(model, dataloader, criterion, device):
+def evaluate(model, dataloader, criterion, device, epoch: int = None, logger: Logger = None,):
     model.eval()
     total = 0
     running_loss = 0
@@ -174,7 +170,7 @@ def evaluate(model, dataloader, criterion, device):
     )  # TODO - might not be ideal like this
 
     with torch.no_grad():
-        for inputs in tqdm(dataloader, desc="Validation"):
+        for inputs in dataloader:
             inputs = [x.to(device) for x in inputs]
             teacher_output, student_output = model(inputs, num_global_views)
 
@@ -194,25 +190,8 @@ def evaluate(model, dataloader, criterion, device):
             total += 1
 
     avg_loss = running_loss / total
-
+    logger.log_step(epoch, "Val")
     return avg_loss, teacher_output, student_output
-
-
-def print_epoch_summary(epoch: int, metrics):
-
-    print(
-        f"\nEpoch {epoch} Summary: "
-        f"Center Norm: {metrics['center_norm']:.4f} | "
-        f"Train Loss: {metrics['train_loss']:.4f} | "
-        f"Train Teacher Embed (Mean: {metrics['train_teacher_embed_mean']:.4f}, Std: {metrics['train_teacher_embed_std']:.4f}, Var: {metrics['train_teacher_embed_var']:.4f}) | "
-        f"Train Student Embed (Mean: {metrics['train_student_embed_mean']:.4f}, Std: {metrics['train_student_embed_std']:.4f}, Var: {metrics['train_student_embed_var']:.4f}) | "
-        f"Train Cosine: {metrics['train_cosine_similarity']:.4f} | "
-        f"Val Loss: {metrics['validation_loss']:.4f} | "
-        f"Val Teacher Embed (Mean: {metrics['val_teacher_embed_mean']:.4f}, Std: {metrics['val_teacher_embed_std']:.4f}, Var: {metrics['val_teacher_embed_var']:.4f}) | "
-        f"Val Student Embed (Mean: {metrics['val_student_embed_mean']:.4f}, Std: {metrics['val_student_embed_std']:.4f}, Var: {metrics['val_student_embed_var']:.4f}) | "
-        f"Val Cosine: {metrics['validation_cosine_similarity']:.4f} | "
-        f"LR: {metrics['learning_rate']:.1e}"
-    )
 
 
 def main():
@@ -237,7 +216,7 @@ def main():
         num_epochs,
     )
     metric_handler = MetricHandler(config)
-    #rich_logger = Logger(metric_handler.metric_names, 1)  # TODO - steps needs to be implemented!
+    rich_logger = Logger(metric_handler.metric_names, len(train_loader), num_epochs+1)
 
     save_path = os.path.join(
         config["training"]["checkpoint_dir"],
@@ -246,58 +225,59 @@ def main():
     )
     model_history = TrainingHistory(save_path)
     best_val_loss = math.inf
-    for epoch in range(1, config["training"]["num_epochs"] + 1):
-        epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
-        current_teach_momentum = momentum_schedule.get_momentum(epoch)
-        train_loss, train_teacher_output, train_student_output = train_one_epoch(
-            model,
-            train_loader,
-            criterion,
-            optimizer,
-            device,
-            current_teach_momentum,
-            epoch_desc=epoch_desc,
-            scheduler=schedulers["main"],
-            warmup_scheduler=schedulers["warmup"],
-            current_epoch=epoch,
-            warmup_epochs=warmup_epochs,
-        )
-        val_loss, val_teacher_output, val_student_output = evaluate(
-            model, val_loader, criterion, device
-        )
+    with rich_logger:
+        for epoch in range(1, num_epochs + 1):
+            current_teach_momentum = momentum_schedule.get_momentum(epoch)
+            train_loss, train_teacher_output, train_student_output = train_one_epoch(
+                model,
+                train_loader,
+                criterion,
+                optimizer,
+                device,
+                current_teach_momentum,
+                logger=rich_logger,
+                scheduler=schedulers["main"],
+                warmup_scheduler=schedulers["warmup"],
+                epoch=epoch,
+                warmup_epochs=warmup_epochs,
+            )
+            val_loss, val_teacher_output, val_student_output = evaluate(
+                model, val_loader, criterion, device, epoch=epoch, logger=rich_logger
+            )
 
-        train_metrics = metric_handler.calculate_metrics(
-            center=model.center,
-            teacher_distribution=train_teacher_output,
-            student_distribution=train_student_output,
-        )
-        train_metrics["loss"] = train_loss
+            train_metrics = metric_handler.calculate_metrics(
+                center=model.center,
+                teacher_distribution=train_teacher_output,
+                student_distribution=train_student_output,
+            )
+            train_metrics["loss"] = train_loss
 
-        val_metrics = metric_handler.calculate_metrics(
-            center=model.center,
-            teacher_distribution=val_teacher_output,
-            student_distribution=val_student_output,
-        )
-        val_metrics["loss"] = val_loss
-        model_history.update(train_metrics, val_metrics, epoch)
+            val_metrics = metric_handler.calculate_metrics(
+                center=model.center,
+                teacher_distribution=val_teacher_output,
+                student_distribution=val_student_output,
+            )
+            val_metrics["loss"] = val_loss
+            model_history.update(train_metrics, val_metrics, epoch)
 
-        if epoch > warmup_epochs:
-            schedulers["main"].step()
+            if epoch > warmup_epochs:
+                schedulers["main"].step()
 
-        # print_epoch_summary(epoch, metric_handler.get_metric_values())
+            #prefixed_val = {f"val_{k}": v for k, v in val_metrics.items()}
+            rich_logger.log_epoch(epoch, train_loss, val_loss, **train_metrics)
 
-        if best_val_loss > val_loss:
-            best_val_loss = val_loss
-            print(f"New best validation loss: {best_val_loss:.4f}. Saving model...")
-            checkpoint = {
-                "epoch": epoch,
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "best_val_loss": best_val_loss,
-                "config": config,
-            }
-            os.makedirs(save_path, exist_ok=True)
-            torch.save(checkpoint, os.path.join(save_path, "best_model.pth"))
+            if best_val_loss > val_loss:
+                best_val_loss = val_loss
+                print(f"New best validation loss: {best_val_loss:.4f}. Saving model...")
+                checkpoint = {
+                    "epoch": epoch,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "best_val_loss": best_val_loss,
+                    "config": config,
+                }
+                os.makedirs(save_path, exist_ok=True)
+                torch.save(checkpoint, os.path.join(save_path, "best_model.pth"))
 
     model_history.vizualize(num_epochs)
 
