@@ -13,7 +13,6 @@ class DINOTrainer(BaseTrainer):
         self.config.training.teacher_momentum_final,
         self.num_epochs,
         )
-        self.criterion = self.create_criterion()
     
     def create_criterion(self):
         return DINOLoss(
@@ -110,10 +109,6 @@ class DINOTrainer(BaseTrainer):
     def _update_schedulers(self, epoch):
         if epoch > self.warmup_epochs:
             self.schedulers["main"].step()
-
-    def _log_metrics(self, train_metrics, val_metrics):
-        self.logger.log_train_epoch(**train_metrics)
-        self.logger.log_val_epoch(**val_metrics)
 
     def _save_if_best(self, epoch:int, val_loss: float):
             if self.best_val_loss > val_loss:

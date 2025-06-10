@@ -1,17 +1,14 @@
-import os
 import torch
 import argparse
 
 from utils.trainers import DINOTrainer
-from utils.logger import Logger
 from data.datasets import STL10DINODataset
 from utils.config_parser import load_config
 from vit_core.ssl.dino.model import DINOViT
-from torch.utils.data import DataLoader, random_split, Subset
 from utils.train_utils import get_transforms
+from torch.utils.data import DataLoader, random_split, Subset
 
 # NOTE - will need refactoring (alongside /w supervised_train), for testing purposes as of rightnow!
-
 
 def setup_device():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

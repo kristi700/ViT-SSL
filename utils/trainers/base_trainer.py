@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from utils.logger import Logger
 from utils.metrics import MetricHandler
 from utils.history import TrainingHistory
-from utils.train_utils import make_optimizer, make_schedulers
+from utils.train_utils import make_optimizer, make_schedulers, make_criterion
 
 class BaseTrainer(ABC):
     def __init__(self, model, config, train_loader, val_loader, device):
@@ -20,6 +20,7 @@ class BaseTrainer(ABC):
         self.warmup_epochs = config["training"]["warmup_epochs"]
         self._get_save_path()
 
+        self.criterion = self.create_criterion()
         self.optimizer = make_optimizer(config, model)
         self.schedulers = make_schedulers(config, self.optimizer, self.num_epochs, self.warmup_epochs * len(train_loader))
         self.metric_handler = MetricHandler(config)
@@ -46,10 +47,9 @@ class BaseTrainer(ABC):
         """Validation logic - varies by training type"""
         pass
     
-    @abstractmethod
     def create_criterion(self):
-        """Loss function creation - specific to each method"""
-        pass
+        """Loss function creation"""
+        return make_criterion(self.config)
     
     def fit(self, num_epochs):
         """Common training loop"""
@@ -69,7 +69,8 @@ class BaseTrainer(ABC):
     
     def _log_metrics(self, train_metrics, val_metrics):
         """Common logging logic"""
-        pass
+        self.logger.log_train_epoch(**train_metrics)
+        self.logger.log_val_epoch(**val_metrics)
     
     def _save_if_best(self, epoch, val_loss):
         """Common checkpointing logic"""
