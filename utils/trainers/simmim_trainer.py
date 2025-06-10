@@ -82,18 +82,4 @@ class SimMIMTrainer(BaseTrainer):
     def _update_schedulers(self, epoch):
         if epoch > self.warmup_epochs:
             self.schedulers["main"].step()
-
-    def _save_if_best(self, epoch:int, val_loss: float):
-            if self.best_val_loss > val_loss:
-                best_val_loss = val_loss
-                print(f"New best validation loss: {best_val_loss:.4f}. Saving model...")
-                checkpoint = {
-                    "epoch": epoch,
-                    "model_state_dict": self.model.state_dict(),
-                    "optimizer_state_dict": self.optimizer.state_dict(),
-                    "best_val_loss": best_val_loss,
-                    "config": self.config,
-                }
-                os.makedirs(self.save_path, exist_ok=True)
-                torch.save(checkpoint, os.path.join(self.save_path, "best_model.pth"))
     
