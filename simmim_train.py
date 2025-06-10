@@ -8,7 +8,6 @@ from vit_core.ssl.simmim.model import SimMIMViT
 from torch.utils.data import DataLoader, random_split, Subset
 from data.datasets import CIFAR10Dataset, STL10Dataset, STL10UnsupervisedDataset
 
-
 # NOTE - will need refactoring (alongside /w supervised_train), for testing purposes as of rightnow!
 
 

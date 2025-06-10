@@ -1,4 +1,3 @@
-import os
 import torch
 
 from .base_trainer import BaseTrainer
@@ -25,8 +24,7 @@ class DINOTrainer(BaseTrainer):
         epoch: int,
     ):
         self.model.train()
-        running_loss = 0
-        total = 0
+        total, running_loss = 0, 0
         num_global_views = (
             self.train_loader.dataset.dataset.num_global_views
         )  # TODO - might not be ideal like this
@@ -71,8 +69,7 @@ class DINOTrainer(BaseTrainer):
 
     def validate(self):
         self.model.eval()
-        total = 0
-        running_loss = 0
+        total, running_loss = 0, 0
         num_global_views = (
             self.val_loader.dataset.dataset.num_global_views
         )  # TODO - might not be ideal like this
@@ -106,7 +103,4 @@ class DINOTrainer(BaseTrainer):
         metrics["Loss"] = running_loss / total
         return metrics
     
-    def _update_schedulers(self, epoch):
-        if epoch > self.warmup_epochs:
-            self.schedulers["main"].step()
     

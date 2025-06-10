@@ -1,22 +1,14 @@
-import os
 import torch
 import argparse
 
-from datetime import datetime
-from utils.logger import Logger
-from data.datasets import CIFAR10Dataset, STL10Dataset
 from torch.utils.data import DataLoader, random_split, Subset
 
 from vit_core.vit import ViT
-from utils.metrics import MetricHandler
-from utils.history import TrainingHistory
 from utils.config_parser import load_config
-from utils.train_utils import (
-    make_criterion,
-    make_optimizer,
-    make_schedulers,
-    get_transforms,
-)
+from utils.trainers import SupervisedTrainer
+from utils.train_utils import get_transforms
+from data.datasets import CIFAR10Dataset, STL10Dataset
+
 
 
 def setup_device():
@@ -30,7 +22,7 @@ def parse_args():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/stl10.yaml",
+        default="configs/stl10_finetune.yaml",
         help="Path to configuration file",
     )
     args = parser.parse_args()
@@ -216,72 +208,6 @@ def _check_loaded_model(model, config):
 
     print("\n=== Model check complete ===\n")
 
-
-def train_one_epoch(
-    model,
-    dataloader,
-    criterion,
-    optimizer,
-    device,
-    logger: Logger = None,
-    scheduler=None,
-    warmup_scheduler=None,
-    epoch=None,
-    warmup_epochs=0,
-):
-    model.train()
-    running_loss = 0
-    correct = 0
-    total = 0
-    for idx, (inputs, labels) in enumerate(dataloader):
-        inputs, labels = inputs.to(device), labels.to(device)
-
-        optimizer.zero_grad()
-        preds = model(inputs)
-        loss = criterion(preds, labels)
-        loss.backward()
-        optimizer.step()
-
-        if warmup_scheduler is not None and epoch <= warmup_epochs:
-            warmup_scheduler.step()
-
-        running_loss += loss.item() * inputs.size(0)
-        correct += (preds.argmax(1) == labels).sum().item()
-        total += labels.size(0)
-        logger.train_log_step(epoch, idx)
-
-    avg_loss = running_loss / total
-    return avg_loss, correct, total
-
-
-def evaluate(model, dataloader, criterion, device, logger):
-    model.eval()
-    total_loss = 0
-    correct = 0
-    total = 0
-
-    with torch.no_grad():
-        for idx, (inputs, labels) in enumerate(dataloader):
-            inputs, labels = inputs.to(device), labels.to(device)
-            preds = model(inputs)
-            loss = criterion(preds, labels)
-            total_loss += loss.item() * inputs.size(0)
-            correct += (preds.argmax(1) == labels).sum().item()
-            total += labels.size(0)
-            logger.val_log_step(idx)
-
-    avg_loss = total_loss / total
-    return avg_loss, correct, total
-
-
-def _unfreeze_backbone(model):
-    for param in model.patch_embedding.parameters():
-        param.requires_grad = True
-    for param in model.encoder_blocks.parameters():
-        param.requires_grad = True
-    return model
-
-
 def main():
     args = parse_args()
     config = load_config(args.config)
@@ -290,80 +216,8 @@ def main():
     transforms = get_transforms(config)
     train_loader, val_loader = prepare_dataloaders(config, transforms)
     model = build_model(config).to(device)
-
-    num_epochs = config["training"]["num_epochs"]
-    warmup_epochs = config["training"]["warmup_epochs"]
-    warmup_steps = warmup_epochs * len(train_loader)
-
-    criterion = make_criterion(config)
-    optimizer = make_optimizer(config, model)
-    schedulers = make_schedulers(config, optimizer, num_epochs, warmup_steps)
-    metric_handler = MetricHandler(config)
-    rich_logger = Logger(metric_handler.metric_names, len(train_loader), len(val_loader), num_epochs+1)
-    
-    best_val_acc = 0.0
-    save_path = os.path.join(
-        config["training"]["checkpoint_dir"],
-        config["training"]["type"],
-        str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S")),
-    )
-    model_history = TrainingHistory(save_path)
-
-    with rich_logger:
-        for epoch in range(1, config["training"]["num_epochs"] + 1):
-            if config["training"].get("freeze_backbone", False) and epoch > config[
-                "training"
-            ].get("freeze_backbone_epochs", float("inf")):
-                model = _unfreeze_backbone(model)
-                optimizer = make_optimizer(config, model)
-
-            train_loss, train_correct, train_total = train_one_epoch(
-                model,
-                train_loader,
-                criterion,
-                optimizer,
-                device,
-                logger=rich_logger,
-                scheduler=schedulers["main"],
-                warmup_scheduler=schedulers["warmup"],
-                epoch=epoch,
-                warmup_epochs=warmup_epochs,
-            )
-            val_loss, val_correct, val_total = evaluate(
-                model, val_loader, criterion, device, rich_logger
-            )
-
-            train_metrics = metric_handler.calculate_metrics(
-                correct=train_correct, total=train_total
-            )
-            train_metrics["Loss"] = train_loss
-            rich_logger.log_train_epoch(train_loss, **train_metrics)
-
-            val_metrics = metric_handler.calculate_metrics(
-                correct=val_correct, total=val_total
-            )
-            val_metrics["Loss"] = val_loss
-            rich_logger.log_val_epoch(val_loss, **val_metrics)
-
-            model_history.update(train_metrics, val_metrics, epoch)
-
-            if epoch > warmup_epochs:
-                schedulers["main"].step()
-
-            if val_metrics["Accuracy"] > best_val_acc:
-                best_val_acc = val_metrics["Accuracy"]
-                print(f"New best validation accuracy: {best_val_acc:.4f}. Saving model...")
-                checkpoint = {
-                    "epoch": epoch,
-                    "model_state_dict": model.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "best_val_acc": best_val_acc,
-                    "config": config,
-                }
-                os.makedirs(save_path, exist_ok=True)
-                torch.save(checkpoint, os.path.join(save_path, "best_model.pth"))
-
-    model_history.vizualize(num_epochs)
+    trainer = SupervisedTrainer(model, config, train_loader, val_loader, device)
+    trainer.fit(config["training"]["num_epochs"])
 
 
 if __name__ == "__main__":

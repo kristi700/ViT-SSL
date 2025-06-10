@@ -1,4 +1,3 @@
-import os
 import torch
 
 from .base_trainer import BaseTrainer
@@ -14,8 +13,7 @@ class SimMIMTrainer(BaseTrainer):
         epoch: int,
     ):
         self.model.train()
-        running_loss = 0
-        total = 0
+        total, running_loss = 0, 0
         all_pred_patches, all_target_patches = [], []
 
         for idx, inputs in enumerate(self.train_loader):
@@ -50,8 +48,7 @@ class SimMIMTrainer(BaseTrainer):
 
     def validate(self):
         self.model.eval()
-        total = 0
-        running_loss = 0
+        total, running_loss = 0, 0
         all_pred_patches, all_target_patches = [], []
         
         with torch.no_grad():
@@ -78,8 +75,3 @@ class SimMIMTrainer(BaseTrainer):
         )
         metrics["Loss"] = running_loss / total
         return metrics
-    
-    def _update_schedulers(self, epoch):
-        if epoch > self.warmup_epochs:
-            self.schedulers["main"].step()
-    

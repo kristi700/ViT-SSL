@@ -52,7 +52,7 @@ class BaseTrainer(ABC):
         """Loss function creation"""
         return make_criterion(self.config)
     
-    def fit(self, num_epochs):
+    def fit(self, num_epochs: int):
         """Common training loop"""
         with self.logger:
             for epoch in range(1, num_epochs + 1):
@@ -66,7 +66,8 @@ class BaseTrainer(ABC):
     
     def _update_schedulers(self, epoch):
         """Common scheduler update logic"""
-        pass
+        if epoch > self.warmup_epochs:
+            self.schedulers["main"].step()
     
     def _log_metrics(self, train_metrics, val_metrics):
         """Common logging logic"""
