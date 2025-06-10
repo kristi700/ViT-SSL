@@ -23,7 +23,7 @@ class Logger:
         metrics_per_row: int = 4,
     ):
         self.console = Console()
-        self.metric_names = metric_names
+        self.metric_names = metric_names + ["Loss"]
         self.train_total_batches = train_total_batches
         self.val_total_batches = val_total_batches
         self.num_epochs = num_epochs

@@ -336,13 +336,13 @@ def main():
             train_metrics = metric_handler.calculate_metrics(
                 correct=train_correct, total=train_total
             )
-            train_metrics["loss"] = train_loss
+            train_metrics["Loss"] = train_loss
             rich_logger.log_train_epoch(train_loss, **train_metrics)
 
             val_metrics = metric_handler.calculate_metrics(
                 correct=val_correct, total=val_total
             )
-            val_metrics["loss"] = val_loss
+            val_metrics["Loss"] = val_loss
             rich_logger.log_val_epoch(val_loss, **val_metrics)
 
             model_history.update(train_metrics, val_metrics, epoch)

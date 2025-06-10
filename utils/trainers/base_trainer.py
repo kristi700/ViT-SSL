@@ -60,7 +60,7 @@ class BaseTrainer(ABC):
                 val_metrics = self.validate()
                 self._update_schedulers(epoch)
                 self._log_metrics(train_metrics, val_metrics)
-                self._save_if_best(epoch, val_metrics['loss'])
+                self._save_if_best(epoch, val_metrics['Loss'])
         self._vizualize()
     
     def _update_schedulers(self, epoch):

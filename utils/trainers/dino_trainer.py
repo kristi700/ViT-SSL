@@ -66,7 +66,7 @@ class DINOTrainer(BaseTrainer):
             teacher_distribution=teacher_output,
             student_distribution=student_output,
         )
-        metrics["loss"] = running_loss / total
+        metrics["Loss"] = running_loss / total
         return metrics
 
     def validate(self):
@@ -103,7 +103,7 @@ class DINOTrainer(BaseTrainer):
             teacher_distribution=teacher_output,
             student_distribution=student_output,
         )
-        metrics["loss"] = running_loss / total
+        metrics["Loss"] = running_loss / total
         return metrics
     
     def _update_schedulers(self, epoch):

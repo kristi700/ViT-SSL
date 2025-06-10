@@ -45,7 +45,7 @@ class SimMIMTrainer(BaseTrainer):
             preds_patches=torch.cat(all_pred_patches, dim=0),
             targets_patches=torch.cat(all_target_patches, dim=0),
         )
-        metrics["loss"] = running_loss / total
+        metrics["Loss"] = running_loss / total
         return metrics
 
     def validate(self):
@@ -76,7 +76,7 @@ class SimMIMTrainer(BaseTrainer):
             preds_patches=torch.cat(all_pred_patches, dim=0),
             targets_patches=torch.cat(all_target_patches, dim=0),
         )
-        metrics["loss"] = running_loss / total
+        metrics["Loss"] = running_loss / total
         return metrics
     
     def _update_schedulers(self, epoch):
