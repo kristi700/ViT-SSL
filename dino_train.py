@@ -161,7 +161,7 @@ def train_one_epoch(
     return avg_loss, teacher_output, student_output
 
 
-def evaluate(model, dataloader, criterion, device, epoch: int = None, logger: Logger = None,):
+def evaluate(model, dataloader, criterion, device, logger: Logger = None,):
     model.eval()
     total = 0
     running_loss = 0
@@ -242,7 +242,7 @@ def main():
                 warmup_epochs=warmup_epochs,
             )
             val_loss, val_teacher_output, val_student_output = evaluate(
-                model, val_loader, criterion, device, epoch=epoch, logger=rich_logger
+                model, val_loader, criterion, device, logger=rich_logger
             )
 
             train_metrics = metric_handler.calculate_metrics(

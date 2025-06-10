@@ -2,8 +2,8 @@ import os
 import torch
 import argparse
 
-from tqdm import tqdm
 from datetime import datetime
+from utils.logger import Logger
 from data.datasets import CIFAR10Dataset, STL10Dataset
 from torch.utils.data import DataLoader, random_split, Subset
 
@@ -223,18 +223,17 @@ def train_one_epoch(
     criterion,
     optimizer,
     device,
-    epoch_desc="Training",
+    logger: Logger = None,
     scheduler=None,
     warmup_scheduler=None,
-    current_epoch=None,
+    epoch=None,
     warmup_epochs=0,
 ):
     model.train()
     running_loss = 0
     correct = 0
     total = 0
-    pbar = tqdm(dataloader, desc=epoch_desc, leave=False)
-    for inputs, labels in pbar:
+    for idx, (inputs, labels) in enumerate(dataloader):
         inputs, labels = inputs.to(device), labels.to(device)
 
         optimizer.zero_grad()
@@ -243,36 +242,33 @@ def train_one_epoch(
         loss.backward()
         optimizer.step()
 
-        if warmup_scheduler is not None and current_epoch <= warmup_epochs:
+        if warmup_scheduler is not None and epoch <= warmup_epochs:
             warmup_scheduler.step()
 
         running_loss += loss.item() * inputs.size(0)
         correct += (preds.argmax(1) == labels).sum().item()
         total += labels.size(0)
-        pbar.set_postfix(
-            loss=f"{loss.item():.4f}",
-            acc=f"{correct/total:.3f}",
-            lr=f"{optimizer.param_groups[0]['lr']:.1e}",
-        )
+        logger.train_log_step(epoch, idx)
 
     avg_loss = running_loss / total
     return avg_loss, correct, total
 
 
-def evaluate(model, dataloader, criterion, device):
+def evaluate(model, dataloader, criterion, device, logger):
     model.eval()
     total_loss = 0
     correct = 0
     total = 0
 
     with torch.no_grad():
-        for inputs, labels in tqdm(dataloader, desc="Validation"):
+        for idx, (inputs, labels) in enumerate(dataloader):
             inputs, labels = inputs.to(device), labels.to(device)
             preds = model(inputs)
             loss = criterion(preds, labels)
             total_loss += loss.item() * inputs.size(0)
             correct += (preds.argmax(1) == labels).sum().item()
             total += labels.size(0)
+            logger.val_log_step(idx)
 
     avg_loss = total_loss / total
     return avg_loss, correct, total
@@ -303,7 +299,8 @@ def main():
     optimizer = make_optimizer(config, model)
     schedulers = make_schedulers(config, optimizer, num_epochs, warmup_steps)
     metric_handler = MetricHandler(config)
-
+    rich_logger = Logger(metric_handler.metric_names, len(train_loader), len(val_loader), num_epochs+1)
+    
     best_val_acc = 0.0
     save_path = os.path.join(
         config["training"]["checkpoint_dir"],
@@ -311,57 +308,60 @@ def main():
         str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S")),
     )
     model_history = TrainingHistory(save_path)
-    for epoch in range(1, config["training"]["num_epochs"] + 1):
-        epoch_desc = f"Epoch {epoch}/{config['training']['num_epochs']}"
 
-        if config["training"].get("freeze_backbone", False) and epoch > config[
-            "training"
-        ].get("freeze_backbone_epochs", float("inf")):
-            model = _unfreeze_backbone(model)
-            optimizer = make_optimizer(config, model)
+    with rich_logger:
+        for epoch in range(1, config["training"]["num_epochs"] + 1):
+            if config["training"].get("freeze_backbone", False) and epoch > config[
+                "training"
+            ].get("freeze_backbone_epochs", float("inf")):
+                model = _unfreeze_backbone(model)
+                optimizer = make_optimizer(config, model)
 
-        train_loss, train_correct, train_total = train_one_epoch(
-            model,
-            train_loader,
-            criterion,
-            optimizer,
-            device,
-            epoch_desc,
-            scheduler=schedulers["main"],
-            warmup_scheduler=schedulers["warmup"],
-            current_epoch=epoch,
-            warmup_epochs=warmup_epochs,
-        )
-        val_loss, val_correct, val_total = evaluate(
-            model, val_loader, criterion, device
-        )
+            train_loss, train_correct, train_total = train_one_epoch(
+                model,
+                train_loader,
+                criterion,
+                optimizer,
+                device,
+                logger=rich_logger,
+                scheduler=schedulers["main"],
+                warmup_scheduler=schedulers["warmup"],
+                epoch=epoch,
+                warmup_epochs=warmup_epochs,
+            )
+            val_loss, val_correct, val_total = evaluate(
+                model, val_loader, criterion, device, rich_logger
+            )
 
-        train_metrics = metric_handler.calculate_metrics(
-            correct=train_correct, total=train_total
-        )
-        train_metrics["loss"] = train_loss
+            train_metrics = metric_handler.calculate_metrics(
+                correct=train_correct, total=train_total
+            )
+            train_metrics["loss"] = train_loss
+            rich_logger.log_train_epoch(train_loss, **train_metrics)
 
-        val_metrics = metric_handler.calculate_metrics(
-            correct=val_correct, total=val_total
-        )
-        val_metrics["loss"] = val_loss
-        model_history.update(train_metrics, val_metrics, epoch)
+            val_metrics = metric_handler.calculate_metrics(
+                correct=val_correct, total=val_total
+            )
+            val_metrics["loss"] = val_loss
+            rich_logger.log_val_epoch(val_loss, **val_metrics)
 
-        if epoch > warmup_epochs:
-            schedulers["main"].step()
+            model_history.update(train_metrics, val_metrics, epoch)
 
-        if val_metrics["Accuracy"] > best_val_acc:
-            best_val_acc = val_metrics["Accuracy"]
-            print(f"New best validation accuracy: {best_val_acc:.4f}. Saving model...")
-            checkpoint = {
-                "epoch": epoch,
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "best_val_acc": best_val_acc,
-                "config": config,
-            }
-            os.makedirs(save_path, exist_ok=True)
-            torch.save(checkpoint, os.path.join(save_path, "best_model.pth"))
+            if epoch > warmup_epochs:
+                schedulers["main"].step()
+
+            if val_metrics["Accuracy"] > best_val_acc:
+                best_val_acc = val_metrics["Accuracy"]
+                print(f"New best validation accuracy: {best_val_acc:.4f}. Saving model...")
+                checkpoint = {
+                    "epoch": epoch,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "best_val_acc": best_val_acc,
+                    "config": config,
+                }
+                os.makedirs(save_path, exist_ok=True)
+                torch.save(checkpoint, os.path.join(save_path, "best_model.pth"))
 
     model_history.vizualize(num_epochs)
 
