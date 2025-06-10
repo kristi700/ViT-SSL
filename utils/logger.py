@@ -104,13 +104,11 @@ class Logger:
             self.val_task, description="Val", completed=batch_idx + 1
         )
 
-    def log_train_epoch(self, train_loss: float, **metrics: float):
+    def log_train_epoch(self, **metrics: float):
         """Update train-side table after training epoch."""
         self.train_table = Table(expand=True, title="Train", show_lines=True)
         self.train_table.add_column("Type")
         self.train_table.add_column("Value")
-
-        self.train_table.add_row("Loss", f"{train_loss:.4f}")
 
         for name in self.metric_names:
             value = metrics.get(name, 0)
@@ -119,13 +117,11 @@ class Logger:
         print(f"Train table now has {len(self.train_table.rows)} rows")
         self._refresh_layout()
 
-    def log_val_epoch(self, val_loss: float, **metrics: float):
+    def log_val_epoch(self, **metrics: float):
         """Update val-side table after validation epoch."""
         self.val_table = Table(expand=True, title="Validation", show_lines=True)
         self.val_table.add_column("Type")
         self.val_table.add_column("Value")
-
-        self.val_table.add_row("Loss", f"{val_loss:.4f}")
 
         for name in self.metric_names:
             value = metrics.get(name, 0)
