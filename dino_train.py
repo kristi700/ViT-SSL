@@ -128,7 +128,7 @@ def train_one_epoch(
         dataloader.dataset.dataset.num_global_views
     )  # TODO - might not be ideal like this
 
-    for inputs in dataloader:
+    for idx, inputs in enumerate(dataloader):
         inputs = [x.to(device) for x in inputs]
 
         optimizer.zero_grad()
@@ -155,7 +155,7 @@ def train_one_epoch(
         running_loss += loss.item()
         total += 1
 
-    logger.log_step(epoch, "Train")
+        logger.train_log_step(epoch, idx)
     avg_loss = running_loss / total
 
     return avg_loss, teacher_output, student_output
@@ -170,7 +170,7 @@ def evaluate(model, dataloader, criterion, device, epoch: int = None, logger: Lo
     )  # TODO - might not be ideal like this
 
     with torch.no_grad():
-        for inputs in dataloader:
+        for idx, inputs in enumerate(dataloader):
             inputs = [x.to(device) for x in inputs]
             teacher_output, student_output = model(inputs, num_global_views)
 
@@ -188,9 +188,9 @@ def evaluate(model, dataloader, criterion, device, epoch: int = None, logger: Lo
             loss = criterion(teacher_output, student_output, model.center)
             running_loss += loss.item()
             total += 1
+            logger.val_log_step(idx)
 
     avg_loss = running_loss / total
-    logger.log_step(epoch, "Val")
     return avg_loss, teacher_output, student_output
 
 
@@ -216,7 +216,7 @@ def main():
         num_epochs,
     )
     metric_handler = MetricHandler(config)
-    rich_logger = Logger(metric_handler.metric_names, len(train_loader), num_epochs+1)
+    rich_logger = Logger(metric_handler.metric_names, len(train_loader), len(val_loader), num_epochs+1)
 
     save_path = os.path.join(
         config["training"]["checkpoint_dir"],
@@ -251,6 +251,7 @@ def main():
                 student_distribution=train_student_output,
             )
             train_metrics["loss"] = train_loss
+            rich_logger.log_train_epoch(train_loss, **train_metrics)
 
             val_metrics = metric_handler.calculate_metrics(
                 center=model.center,
@@ -258,13 +259,12 @@ def main():
                 student_distribution=val_student_output,
             )
             val_metrics["loss"] = val_loss
+            rich_logger.log_val_epoch(val_loss, **val_metrics)
+
             model_history.update(train_metrics, val_metrics, epoch)
 
             if epoch > warmup_epochs:
                 schedulers["main"].step()
-
-            #prefixed_val = {f"val_{k}": v for k, v in val_metrics.items()}
-            rich_logger.log_epoch(epoch, train_loss, val_loss, **train_metrics)
 
             if best_val_loss > val_loss:
                 best_val_loss = val_loss
