@@ -1,0 +1,3 @@
+defaults:
+  - dino.yaml
+  - _self_ # Overwrite everything before

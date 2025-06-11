@@ -199,7 +199,7 @@ def _check_loaded_model(model, config):
 def get_save_path():
     return hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
 
-@hydra.main(config_path="configs", config_name="supervised", version_base=None)
+@hydra.main(config_path="configs", config_name="config", version_base=None)
 def main(config: Config):
     device = setup_device()
     transforms = get_transforms(config)

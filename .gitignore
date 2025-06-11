@@ -1,4 +1,4 @@
-checkpoints/*
+experiments/*
 training_data/*
 
 # Byte-compiled / optimized / DLL files
