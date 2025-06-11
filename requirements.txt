@@ -9,3 +9,4 @@ rich
 opencv-python
 pytest
 matplotlib
+hydra-core

@@ -1,0 +1,8 @@
+defaults:
+  - config_schema
+  - data: stl10
+  - model: vit_small_dino
+  - training: dino_training
+  - transforms@transforms.globals: globals
+  - transforms@transforms.locals: locals
+  - metrics: dino_metrics

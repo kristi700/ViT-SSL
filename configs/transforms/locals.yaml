@@ -1,0 +1,7 @@
+- name: RandomResizedCrop 
+  params:
+    size: ${data.img_size}
+    scale: [0.05, 0.4]
+- name: RandomHorizontalFlip
+  params: {}
+- name: ToTensor

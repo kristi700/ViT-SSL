@@ -1,32 +1,18 @@
+import hydra
 import torch
-import argparse
 
+from utils.schemas import Config
 from utils.trainers import DINOTrainer
 from data.datasets import STL10DINODataset
-from utils.config_parser import load_config
 from vit_core.ssl.dino.model import DINOViT
 from utils.train_utils import get_transforms
 from torch.utils.data import DataLoader, random_split, Subset
 
-# NOTE - will need refactoring (alongside /w supervised_train), for testing purposes as of rightnow!
 
 def setup_device():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     return device
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="Train ViT Model")
-    parser.add_argument(
-        "--config",
-        type=str,
-        default="configs/stl10_dino.yaml",
-        help="Path to configuration file",
-    )
-    args = parser.parse_args()
-    return args
-
 
 def _get_dataset(config, transforms):
     mode = config["training"]["type"].lower()
@@ -98,12 +84,9 @@ def build_model(config):
     )
     return model
 
-
-def main():
-    args = parse_args()
-    config = load_config(args.config)
+@hydra.main(config_path="configs", config_name="dino", version_base=None)
+def main(config: Config):
     device = setup_device()
-
     transforms = get_transforms(config)
     train_loader, val_loader = prepare_dataloaders(config, transforms)
     model = build_model(config).to(device)
