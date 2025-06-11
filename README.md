@@ -1,32 +1,66 @@
+# 🚧 Project Status - Work in progress
+
 # ViT-SSL
+> A PyTorch Framework for Self-Supervised and Supervised Learning with Vision Transformers.
 
-An implementation of the Vision Transformer (ViT) in PyTorch, with a focus on understanding the architecture and exploring Self-Supervised Learning (SSL) pre-training techniques. This project aims to build a vanilla ViT from scratch and then progressively integrate methods like SimMIM and DINO.
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/kristi700/ViT-SSL/blob/main/LICENSE.md)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Framework: PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?logo=PyTorch&logoColor=white)](https://pytorch.org/)
 
-## Overview
+# GIF - SimMIM reconstuction, DINO attention viz
 
-This repository provides a PyTorch implementation of the Vision Transformer (ViT) as described in "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale" by Dosovitskiy et al. The initial focus is on a clean and understandable implementation of the base ViT model for image classification.
+## ✨ Overview
 
-The long-term goal is to extend this base with popular and effective Self-Supervised Learning (SSL) pre-training strategies, allowing the model to learn powerful representations from unlabeled image data.
+**Vit-SSL**  is an educational project currently in development, designed to teach the principles and practice of Self-Supervised Learning (SSL). It offers intuitive explanations, reproducible code, and hands-on experiments.
 
-## Current Features
+## 🔑 Key Features
 
-*   **Vanilla Vision Transformer (ViT) Architecture**
-*   **Supervised Training Pipeline**
-*   **Evaluation & Visualization**
-*   **SimMIM training & Visualization**
-*   **Pretrained ViT Finetune**
-## Project Roadmap & Planned Features
+*   **Multiple Pre-training Methods:** Out-of-the-box support for:
+    *   **DINO:** Self-distillation with no labels.
+    *   **SimMIM:** A simple masked image modeling approach.
+    *   **Supervised:** A standard supervised baseline for comparison.
+*   **Seamless Fine-tuning:** Easily load any pre-trained checkpoint and fine-tune it on a downstream classification task.
+*   **Unified Trainer Architecture:** A modular and extensible design that simplifies adding new models, datasets, or training methods.
+*   **Transparent Logging:** Powered by `rich` for clear, color-coded, and organized console output.
 
-The following features and improvements are planned for this project:
+## ⚙️ Installation
 
-### Phase 1: Self-Supervised Pre-training - SimMIM
-- SimMIM paper review added - https://github.com/kristi700/Projects/blob/master/paper_reviews/Simple_Masked_Image_Modeling.pdf
-- SimMIM training implemented
-- SimMIM reconstruction implemented
-### Phase 2: Self-Supervised Pre-training - DINO
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/kristi700/ViT-SSL.git
+    cd ViT-SSL
+    ```
 
-### Phase 3: ViT Enhancements
+2.  **Create a virtual environment (recommended):**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate
+    ```
 
-### Phase 4: Advanced (Future Considerations)
--   **(Potentially) DINOv2 Implementation:** Explore key components and improvements from DINOv2.
--   **Other SSL Techniques:** Investigate and potentially implement other relevant SSL methods.
+3.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+## 🚀 Quick Start
+
+Currently each training type has its own training file - dino_train.py, simmim_train.py, supervised_train.py
+
+### 1. Pre-training a ViT with DINO
+```python dino_train.py --config configs/stl10_dino.yaml```
+
+### 2. Finetuning a pretrained model
+```python train.py --config configs/stl10_finetune.yaml```
+
+# GIF - Showing training logger
+
+## 📊 Results
+
+| Pre-training Method | Fine-tuning Dataset | Top-1 Accuracy |
+|---------------------|---------------------|----------------|
+| DINO                | STL10               | TODO           |
+| SimMIM              | STL10               | TODO           |
+| Supervised          | STL10               | TODO           |
+
+## 📜 License
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/kristi700/ViT-SSL/blob/main/LICENSE.md) file for details.

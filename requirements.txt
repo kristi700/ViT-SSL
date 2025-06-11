@@ -1,0 +1,11 @@
+torch
+torcheval
+torchvision
+pytorch-ignite
+omegaconf
+numpy
+pandas
+rich
+opencv-python
+pytest
+matplotlib
