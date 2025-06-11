@@ -16,11 +16,17 @@ class MetricName(str, Enum):
     StudentSTD = "StudentSTD"
     StudentVar = "StudentVar"
     CosineSim = "CosineSim"
+    Accuracy = "Accuracy"
+    PSNR = "PSNR"
+    SSIM = "SSIM"
+
 
 @dataclass
 class TransformsConfig:
     globals: List[TransformConfig] = field(default_factory=list)
     locals: List[TransformConfig] = field(default_factory=list)
+    train: List[TransformConfig] = field(default_factory=list)
+    val: List[TransformConfig] = field(default_factory=list)
 
 @dataclass
 class Config:

@@ -1,0 +1,4 @@
+- name: Resize
+  params:
+    size: ["${data.img_size}", "${data.img_size}"]
+- name: ToTensor

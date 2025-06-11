@@ -1,0 +1,9 @@
+patch_size: 16
+in_channels: 3 
+embed_dim: 384
+num_blocks: 6
+num_heads: 6
+mlp_dim: 1536
+dropout: 0.1
+output_dim: 65536
+mask_ratio: 0.5
