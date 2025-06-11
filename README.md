@@ -5,6 +5,7 @@
 
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/kristi700/ViT-SSL/blob/main/LICENSE.md)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Config: Hydra](https://img.shields.io/badge/Config-Hydra-89B83A.svg)](https://hydra.cc/)
 [![Framework: PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?logo=PyTorch&logoColor=white)](https://pytorch.org/)
 
 # GIF - SimMIM reconstuction, DINO attention viz
