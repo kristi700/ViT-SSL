@@ -6,3 +6,7 @@ defaults:
   - transforms@transforms.train: vanilla_train
   - transforms@transforms.val: vanilla_val
   - metrics: classification_metrics
+
+hydra:
+  run:
+    dir: ./experiments/${training.type}/${now:%Y-%m-%d_%H_%M_%S}

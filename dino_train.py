@@ -84,13 +84,16 @@ def build_model(config):
     )
     return model
 
+def get_save_path():
+    return hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
+
 @hydra.main(config_path="configs", config_name="dino", version_base=None)
 def main(config: Config):
     device = setup_device()
     transforms = get_transforms(config)
     train_loader, val_loader = prepare_dataloaders(config, transforms)
     model = build_model(config).to(device)
-    trainer = DINOTrainer(model, config, train_loader, val_loader, device)
+    trainer = DINOTrainer(model, get_save_path(),config, train_loader, val_loader, device)
     trainer.fit(config["training"]["num_epochs"])
 
 if __name__ == "__main__":

@@ -93,6 +93,8 @@ def build_model(config):
     )
     return model
 
+def get_save_path():
+    return hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
 
 @hydra.main(config_path="configs", config_name="simmim", version_base=None)
 def main(config: Config):
@@ -100,7 +102,7 @@ def main(config: Config):
     transforms = get_transforms(config)
     train_loader, val_loader = prepare_dataloaders(config, transforms)
     model = build_model(config).to(device)
-    trainer = SimMIMTrainer(model, config, train_loader, val_loader, device)
+    trainer = SimMIMTrainer(model, get_save_path(), config, train_loader, val_loader, device)
     trainer.fit(config["training"]["num_epochs"])
 
 if __name__ == "__main__":
