@@ -1,10 +1,10 @@
+import hydra
 import torch
-import argparse
 
 from torch.utils.data import DataLoader, random_split, Subset
 
 from vit_core.vit import ViT
-from utils.config_parser import load_config
+from utils.schemas import Config
 from utils.trainers import SupervisedTrainer
 from utils.train_utils import get_transforms
 from data.datasets import CIFAR10Dataset, STL10Dataset
@@ -15,18 +15,6 @@ def setup_device():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     return device
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="Train ViT Model")
-    parser.add_argument(
-        "--config",
-        type=str,
-        default="configs/stl10_finetune.yaml",
-        help="Path to configuration file",
-    )
-    args = parser.parse_args()
-    return args
 
 
 def _get_dataset(config, transform):
@@ -208,11 +196,9 @@ def _check_loaded_model(model, config):
 
     print("\n=== Model check complete ===\n")
 
-def main():
-    args = parse_args()
-    config = load_config(args.config)
+@hydra.main(config_path="configs", config_name="supervised", version_base=None)
+def main(config: Config):
     device = setup_device()
-
     transforms = get_transforms(config)
     train_loader, val_loader = prepare_dataloaders(config, transforms)
     model = build_model(config).to(device)
