@@ -50,8 +50,8 @@ Currently each training type has its own training file - dino_train.py, simmim_t
 ### 1. Pre-training a ViT with DINO
 ```python dino_train.py --config configs/stl10_dino.yaml```
 
-### 2. Finetuning a pretrained model
-```python train.py --config configs/stl10_finetune.yaml```
+### 2. Finetuning a pre-trained model
+```python supervised_train.py --config configs/stl10_finetune.yaml```
 
 # GIF - Showing training logger
 
