@@ -1,6 +1,0 @@
-dataset_name: 'stl10'
-data_csv: 'training_data/stl10/train_labels.json'
-data_dir: 'training_data/stl10/train_images'
-val_split: 0.2
-num_workers: 4
-img_size: 192

@@ -1,11 +1,16 @@
 defaults:
   - config_schema
-  - data: stl10_supervised
-  - model: vit_small_classification
-  - training: supervised_training
-  - transforms@transforms.train: vanilla_train
-  - transforms@transforms.val: vanilla_val
-  - metrics: classification_metrics
+
+  - base@data: data
+  - base@model: model
+  - base@training: training
+
+  - supervised@data: data
+  - supervised@model: model
+  - supervised@training: training
+  - supervised@transforms.train: train_transforms
+  - supervised@transforms.val: val_transforms
+  - supervised@metrics: metrics
 
 hydra:
   run:

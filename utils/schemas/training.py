@@ -33,7 +33,6 @@ class TrainingConfig:
     warmup_epochs: int
     lr_final: float
     weight_decay: float
-    checkpoint_dir: str
     criterion: Optional[CriterionConfig]
     optimizer: OptimizerConfig
     lr_scheduler: SchedulerConfig

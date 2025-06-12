@@ -1,11 +1,16 @@
 defaults:
   - config_schema
-  - data: stl10_unsupervised
-  - model: vit_small_dino
-  - training: dino_training
-  - transforms@transforms.globals: globals
-  - transforms@transforms.locals: locals
-  - metrics: dino_metrics
+
+  - base@data: data
+  - base@model: model
+  - base@training: training
+
+  - dino@data: data
+  - dino@model: model
+  - dino@training: training
+  - dino@transforms.globals: globals
+  - dino@transforms.locals: locals
+  - dino@metrics: metrics
 
 hydra:
   run:

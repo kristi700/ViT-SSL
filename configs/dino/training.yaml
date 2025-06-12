@@ -1,0 +1,7 @@
+type: 'dino_unsupervised'
+student_temp: 0.1
+teacher_temp: 0.04
+teacher_momentum_start: 0.996
+teacher_momentum_final: 1
+num_all_views: 8
+num_global_views: 2

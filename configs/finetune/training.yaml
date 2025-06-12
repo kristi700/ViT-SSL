@@ -1,0 +1,4 @@
+type: 'finetune'
+pretrained_path: 'experiments/...'
+criterion:
+  name: CrossEntropyLoss

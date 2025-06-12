@@ -1,11 +1,16 @@
 defaults:
   - config_schema
-  - data: stl10_unsupervised
-  - model: vit_small_simmim
-  - training: simmim_training
-  - transforms@transforms.train: vanilla_train
-  - transforms@transforms.val: vanilla_val
-  - metrics: simmim_metrics
+
+  - base@data: data
+  - base@model: model
+  - base@training: training
+
+  - simmim@data: data
+  - simmim@model: model
+  - simmim@training: training
+  - simmim@transforms.train: train_transforms
+  - simmim@transforms.val: val_transforms
+  - simmim@metrics: metrics
 
 hydra:
   run:

@@ -1,0 +1,3 @@
+dataset_name: 'stl10'
+data_csv: 'training_data/stl10/train_labels.json'
+data_dir: 'training_data/stl10/train_images'

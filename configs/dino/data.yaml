@@ -1,0 +1,2 @@
+dataset_name: 'stl10'
+data_dir: 'training_data/stl10/unlabeled_images'
