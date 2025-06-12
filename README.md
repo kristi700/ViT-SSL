@@ -45,13 +45,7 @@
 
 ## 🚀 Quick Start
 
-Currently each training type has its own training file - dino_train.py, simmim_train.py, supervised_train.py
-
-### 1. Pre-training a ViT with DINO
-```python dino_train.py --config configs/stl10_dino.yaml```
-
-### 2. Finetuning a pre-trained model
-```python supervised_train.py --config configs/stl10_finetune.yaml```
+There is one unified training file (train.py), where one can train Supervised, DINO, SimMIM and fine-tune pre-trained models. The type of training needs to be specified in the configs.
 
 # GIF - Showing training logger
 
