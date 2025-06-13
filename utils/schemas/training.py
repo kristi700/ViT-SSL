@@ -1,20 +1,24 @@
 from typing import Optional
 from dataclasses import dataclass
 
+
 @dataclass
 class OptimizerConfig:
     name: str
     params: dict
+
 
 @dataclass
 class SchedulerConfig:
     main: dict
     warmup: dict
 
+
 @dataclass
 class CriterionConfig:
     name: str
     params: dict
+
 
 @dataclass
 class TrainingConfig:
@@ -25,6 +29,7 @@ class TrainingConfig:
     teacher_momentum_final: Optional[float]
     num_all_views: Optional[int]
     num_global_views: Optional[int]
+    resume_from_checkpoint: Optional[str]
     random_seed: int
     batch_size: int
     num_epochs: int

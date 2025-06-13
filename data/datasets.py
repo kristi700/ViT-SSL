@@ -111,13 +111,8 @@ class STL10DINODataset(Dataset):
         return global_views
 
     def _get_global_views(self, image: torch.Tensor) -> List[torch.Tensor]:
-        return [
-            self.transforms["globals"](image)
-            for _ in range(self.num_global_views)
-        ]
+        return [self.transforms["globals"](image) for _ in range(self.num_global_views)]
 
     def _get_local_views(self, image: torch.Tensor) -> List[torch.Tensor]:
         num_local_views = self.num_all_views - self.num_global_views
-        return [
-            self.transforms["locals"](image) for _ in range(num_local_views)
-        ]
+        return [self.transforms["locals"](image) for _ in range(num_local_views)]

@@ -1,4 +1,4 @@
-from .logger import Logger 
+from .logger import Logger
 from .metrics import MetricHandler
 from .history import TrainingHistory
 

@@ -5,11 +5,14 @@ import torch
 from .base_trainer import BaseTrainer
 from utils.train_utils import make_optimizer
 
+
 class SupervisedTrainer(BaseTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.freeze_backbone = self.config["training"].get("freeze_backbone", False)
-        self.freeze_backbone_epochs = self.config.get("freeze_backbone_epochs", float("inf"))
+        self.freeze_backbone_epochs = self.config.get(
+            "freeze_backbone_epochs", float("inf")
+        )
         self.best_val_acc = -math.inf
 
     def train_epoch(
@@ -28,17 +31,15 @@ class SupervisedTrainer(BaseTrainer):
             loss.backward()
             self.optimizer.step()
 
-            if self.schedulers['warmup'] is not None and epoch <= self.warmup_epochs:
-                self.schedulers['warmup'].step()
+            if self.schedulers["warmup"] is not None and epoch <= self.warmup_epochs:
+                self.schedulers["warmup"].step()
 
             running_loss += loss.item() * inputs.size(0)
             correct += (preds.argmax(1) == labels).sum().item()
             total += labels.size(0)
             self.logger.train_log_step(epoch, idx)
 
-        metrics = self.metric_handler.calculate_metrics(
-                correct=correct, total=total
-            )
+        metrics = self.metric_handler.calculate_metrics(correct=correct, total=total)
         metrics["Loss"] = running_loss / total
         return metrics
 
@@ -56,15 +57,15 @@ class SupervisedTrainer(BaseTrainer):
                 total += labels.size(0)
                 self.logger.val_log_step(idx)
 
-        metrics = self.metric_handler.calculate_metrics(
-                correct=correct, total=total
-            )
+        metrics = self.metric_handler.calculate_metrics(correct=correct, total=total)
         metrics["Loss"] = running_loss / total
         return metrics
-    
+
     def fit(self, num_epochs: int):
+        end_epoch = self.start_epoch + num_epochs
+
         with self.logger:
-            for epoch in range(1, num_epochs + 1):
+            for epoch in range(self.start_epoch + 1, end_epoch + 1):
                 self.current_epoch = epoch
                 if self.freeze_backbone and epoch == self.freeze_backbone_epochs:
                     self._unfreeze_backbone()
@@ -73,7 +74,7 @@ class SupervisedTrainer(BaseTrainer):
                 val_metrics = self.validate()
                 self._update_schedulers(epoch)
                 self._log_metrics(train_metrics, val_metrics)
-                self._save_if_best(epoch, val_metrics['Accuracy'])
+                self._save_if_best(epoch, val_metrics["Accuracy"])
         self._vizualize()
 
     def _unfreeze_backbone(self):
@@ -95,4 +96,3 @@ class SupervisedTrainer(BaseTrainer):
             }
             os.makedirs(self.save_path, exist_ok=True)
             torch.save(checkpoint, os.path.join(self.save_path, "best_model.pth"))
-        

@@ -4,21 +4,21 @@ from .base_trainer import BaseTrainer
 from vit_core.ssl.dino.loss import DINOLoss
 from vit_core.ssl.dino.dino_utils import DINOMomentumScheduler
 
+
 class DINOTrainer(BaseTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.momentum_schedule = DINOMomentumScheduler(
-        self.config.training.teacher_momentum_start,
-        self.config.training.teacher_momentum_final,
-        self.num_epochs,
+            self.config.training.teacher_momentum_start,
+            self.config.training.teacher_momentum_final,
+            self.num_epochs,
         )
-    
+
     def create_criterion(self):
         return DINOLoss(
-            self.config.training.teacher_temp,
-            self.config.training.student_temp
+            self.config.training.teacher_temp, self.config.training.student_temp
         )
-    
+
     def train_epoch(
         self,
         epoch: int,
@@ -51,8 +51,8 @@ class DINOTrainer(BaseTrainer):
             loss.backward()
             self.optimizer.step()
             self.model.momentum_update_teacher(current_teach_momentum)
-            if self.schedulers['warmup'] is not None and epoch <= self.warmup_epochs:
-                self.schedulers['warmup'].step()
+            if self.schedulers["warmup"] is not None and epoch <= self.warmup_epochs:
+                self.schedulers["warmup"].step()
 
             running_loss += loss.item()
             total += 1
@@ -102,5 +102,3 @@ class DINOTrainer(BaseTrainer):
         )
         metrics["Loss"] = running_loss / total
         return metrics
-    
-    

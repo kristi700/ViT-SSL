@@ -2,6 +2,7 @@ import torch
 
 from .base_trainer import BaseTrainer
 
+
 class SimMIMTrainer(BaseTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,16 +26,22 @@ class SimMIMTrainer(BaseTrainer):
             loss.backward()
             self.optimizer.step()
 
-            if self.schedulers['warmup'] is not None and epoch <= self.warmup_epochs:
-                self.schedulers['warmup'].step()
+            if self.schedulers["warmup"] is not None and epoch <= self.warmup_epochs:
+                self.schedulers["warmup"].step()
 
             running_loss += loss.item()
             total += 1
 
             preds_patches = torch.clamp(
-                preds_flat.reshape(-1, self.in_channels, self.patch_size, self.patch_size), 0, 1
+                preds_flat.reshape(
+                    -1, self.in_channels, self.patch_size, self.patch_size
+                ),
+                0,
+                1,
             )
-            targets_patches = targets_flat.reshape(-1, self.in_channels, self.patch_size, self.patch_size)
+            targets_patches = targets_flat.reshape(
+                -1, self.in_channels, self.patch_size, self.patch_size
+            )
             all_pred_patches.append(preds_patches)
             all_target_patches.append(targets_patches)
             self.logger.train_log_step(epoch, idx)
@@ -50,7 +57,7 @@ class SimMIMTrainer(BaseTrainer):
         self.model.eval()
         total, running_loss = 0, 0
         all_pred_patches, all_target_patches = [], []
-        
+
         with torch.no_grad():
             for idx, inputs in enumerate(self.val_loader):
                 inputs = inputs.to(self.device)
@@ -60,7 +67,11 @@ class SimMIMTrainer(BaseTrainer):
                 total += 1
 
                 preds_patches = torch.clamp(
-                    preds_flat.reshape(-1, self.in_channels, self.patch_size, self.patch_size), 0, 1
+                    preds_flat.reshape(
+                        -1, self.in_channels, self.patch_size, self.patch_size
+                    ),
+                    0,
+                    1,
                 )
                 targets_patches = targets_flat.reshape(
                     -1, self.in_channels, self.patch_size, self.patch_size

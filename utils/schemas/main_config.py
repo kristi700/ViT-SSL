@@ -7,6 +7,7 @@ from .transforms import TransformConfig
 from dataclasses import dataclass, field
 from hydra.core.config_store import ConfigStore
 
+
 class MetricName(str, Enum):
     CenterNorm = "CenterNorm"
     TeacherMean = "TeacherMean"
@@ -28,6 +29,7 @@ class TransformsConfig:
     train: List[TransformConfig] = field(default_factory=list)
     val: List[TransformConfig] = field(default_factory=list)
 
+
 @dataclass
 class Config:
     model: ModelConfig
@@ -35,6 +37,7 @@ class Config:
     training: TrainingConfig
     transforms: TransformsConfig
     metrics: List[MetricName] = field(default_factory=list)
+
 
 cs = ConfigStore.instance()
 cs.store(name="config_schema", node=Config)

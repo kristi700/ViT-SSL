@@ -70,7 +70,7 @@ class Logger:
         self.val_table = Table(expand=True, title="Validation", show_lines=True)
         self.val_table.add_column("Type")
         self.val_table.add_column("Value")
-    
+
     def _refresh_layout(self):
         left_group = Group(self.left_progress, self.train_table)
         right_group = Group(self.right_progress, self.val_table)
