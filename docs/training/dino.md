@@ -1,4 +1,4 @@
-# 🦖 DINO Implementation
+# 🦖 DINO
 
 The DINO implementation in **ViT-SSL** is modular and educational by design. It follows the original [DINO paper](https://arxiv.org/pdf/2104.14294).
 
@@ -11,8 +11,6 @@ DINO (Self-**Di**stillation with **No** Labels) uses a **teacher–student frame
 ---
 
 ## 🧱 Architecture
-
-### `DINOViT` Model
 
 - Defined in `vit_core/ssl/dino/model.py`
 - Composed of:
@@ -55,7 +53,7 @@ def forward(multi_crop_views, num_global_views):
 
 *Defined in vit_core/ssl/dino/loss.py*
 
-### 🔁 Training: DINOTrainer
+### ⚙️ Training: DINOTrainer
 - Inherits from a generic BaseTrainer
 - Implements:
     - create_criterion(): builds the DINOLoss

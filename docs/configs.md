@@ -88,7 +88,7 @@ To switch training modes, change dino.yaml to simmim.yaml, finetune.yaml, etc.
 
 Each run saves outputs in a method+timestamp-based directory:
 
->./experiments/training.type/timestamp/
+`./experiments/training.type/timestamp/`
 
 This structure keeps logs, configs, and checkpoints isolated per run.
 

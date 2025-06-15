@@ -1,7 +1,7 @@
-# 🧩 SimMIM Implementation
+# 🧩 SimMIM
 
 This section covers the implementation of **SimMIM (Simple Masked Image Modeling)** in the ViT-SSL framework.  
-The goal of SimMIM is to teach a Vision Transformer to reconstruct masked image patches from unmasked context
+It follows the original [SimMIM paper](https://arxiv.org/pdf/2111.09886).
 
 ---
 
@@ -59,7 +59,7 @@ The loss is a pixel-wise regression loss (e.g., MSE or L1) between the predicted
 
 `loss = criterion(predicted_pixels, target_pixels)`
 
-## Training Logic: SimMIMTrainer
+## ⚙️ Training: SimMIMTrainer
 
 Implemented in trainer.py, this trainer:
 

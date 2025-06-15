@@ -43,7 +43,7 @@ Each variant prepends a learnable `[CLS]` token and adds a positional embedding.
 - A lightweight head that normalizes and linearly maps the CLS token to the number of classes.
 - Can be replaced with a deeper head if needed for finetuning.
 
-##  📉 Supervised Training: SupervisedTrainer
+##  ⚙️ Training: SupervisedTrainer
 
 Defined in trainer.py, this trainer handles:
 
@@ -51,16 +51,6 @@ Defined in trainer.py, this trainer handles:
 - Accuracy tracking
 - Scheduler warmup
 - Backbone freezing/unfreezing for transfer learning or finetuning
-
-##  🔁 Training Flow:
-
-```python
-for (inputs, labels) in train_loader:
-    preds = model(inputs)
-    loss = criterion(preds, labels)
-    loss.backward()
-    optimizer.step()
-```
 
 ## 🔁 Finetuning Support
 

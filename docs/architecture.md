@@ -2,7 +2,7 @@
 
 This page provides a high-level overview of the main components in **ViT-SSL** and how they fit together.
 
-## `vit_core`
+## 🧱 `vit_core`
 Core implementation of the Vision Transformer (ViT) and self-supervised variants.
 
 - `patch_embedding.py` – splits the image into patches and projects them to the embedding dimension.
@@ -13,7 +13,7 @@ Core implementation of the Vision Transformer (ViT) and self-supervised variants
 - `vit.py` – convenience wrapper assembling the full ViT model.
 - `ssl/` – implementations of DINO and SimMIM specific components.
 
-## `utils`
+## ⚙️ `utils`
 Utilities used throughout training and evaluation.
 
 - `trainers/` – training loops for Supervised, DINO and SimMIM methods.
@@ -21,12 +21,12 @@ Utilities used throughout training and evaluation.
 - `metrics.py` – common evaluation metrics.
 - `schedulers.py` – helper learning rate schedulers.
 
-## `configs`
+## 🛠️ `configs`
 [Hydra](https://hydra.cc/) configuration files. Base configs live under `configs/base/` and each method has overrides (e.g. `configs/dino/`, `configs/simmim/`). The root `config.yaml` selects which set of overrides to apply.
 
 For details on each configurability, see the [Configuration Guide](configs.md) section.
 
-## Other directories
+## 🔷 Other directories
 
 - `data/` – small dataset wrappers used for experiments.
 - `scripts/` – evaluation and helper scripts.
