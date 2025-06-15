@@ -51,7 +51,7 @@ def forward(multi_crop_views, num_global_views):
 - Uses cross-view prediction: student tries to predict teacher output from different views
 - Cross entropy is computed between softmaxed teacher and log-softmaxed student outputs:
 
-> loss = -(softmax(teacher) * log_softmax(student)).sum().mean() <br>
+`loss = -(softmax(teacher) * log_softmax(student)).sum().mean()` <br>
 
 *Defined in vit_core/ssl/dino/loss.py*
 
