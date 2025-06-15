@@ -8,6 +8,10 @@
 [![Config: Hydra](https://img.shields.io/badge/Config-Hydra-89B83A.svg)](https://hydra.cc/)
 [![Framework: PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?logo=PyTorch&logoColor=white)](https://pytorch.org/)
 
+## 📚 Documentation
+
+👉 [https://kristi700.github.io/ViT-SSL](https://kristi700.github.io/ViT-SSL)
+
 # GIF - SimMIM reconstuction, DINO attention viz
 
 ## ✨ Overview
