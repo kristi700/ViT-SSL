@@ -4,13 +4,13 @@ The DINO implementation in **ViT-SSL** is modular and educational by design. It 
 
 ---
 
-## 🧠 Overview
+## Overview
 
 DINO (Self-**Di**stillation with **No** Labels) uses a **teacher–student framework** to learn representations without supervision. The teacher is an EMA (exponential moving average) of the student. Training aims to align their output distributions using softmax cross-view consistency.
 
 ---
 
-## 🧱 Architecture
+## Architecture
 
 - Defined in `vit_core/ssl/dino/model.py`
 - Composed of:
@@ -29,7 +29,7 @@ student_output = student_head(student_backbone(x))
 
 Teacher outputs are updated via momentum_update_teacher() using a scheduled momentum.
 
-### 🔁 Forward Pass
+### Forward Pass
 
 ```python
 def forward(multi_crop_views, num_global_views):
@@ -43,7 +43,7 @@ def forward(multi_crop_views, num_global_views):
 ```
 
 
-### 📉 Loss: DINOLoss
+### Loss: DINOLoss
 - Implements *Equation 1* from the DINO paper
 - Applies temperature scaling + centering to the teacher logits
 - Uses cross-view prediction: student tries to predict teacher output from different views
@@ -53,7 +53,7 @@ def forward(multi_crop_views, num_global_views):
 
 *Defined in vit_core/ssl/dino/loss.py*
 
-### ⚙️ Training: DINOTrainer
+### Training: DINOTrainer
 - Inherits from a generic BaseTrainer
 - Implements:
     - create_criterion(): builds the DINOLoss
@@ -65,7 +65,7 @@ def forward(multi_crop_views, num_global_views):
     - Both teacher and student outputs are reshaped per view before computing the loss
     - Centering is updated at every step as per DINO's original formulation
 
-### 📦 Modular Design
+### Modular Design
 
 | Component  | File | Role |
 |------------------------|----------------|-------------------------------------|

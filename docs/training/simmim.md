@@ -5,14 +5,14 @@ It follows the original [SimMIM paper](https://arxiv.org/pdf/2111.09886).
 
 ---
 
-## 🧠 Overview
+## Overview
 
 SimMIM performs **masked patch prediction**, where parts of an input image are hidden (masked) and the model learns to reconstruct those regions.  
 The approach is conceptually similar to BERT-style pretraining but adapted for vision using **patch-level masking and pixel-level regression**.
 
 ---
 
-## 🧱 Architecture: `SimMIMViT`
+## Architecture: `SimMIMViT`
 
 Defined in `model.py`, this model consists of:
 
@@ -26,7 +26,7 @@ The masked tokens are inserted directly into the sequence before encoding. No `[
 
 ---
 
-## 🧠 Masking: `simple_masking`
+## Masking: `simple_masking`
 
 Defined in `masking.py`, this function:
 
@@ -38,7 +38,7 @@ Defined in `masking.py`, this function:
 
 ---
 
-## 🔁 Forward Pass
+## Forward Pass
 
 ```python
 patches = Unfold(image)
@@ -53,13 +53,13 @@ output = simmim_head(encoded[masked_positions])
 
 The model only predicts masked patches, this makes training efficient and focused.
 
-## 📉 Loss
+## Loss
 
 The loss is a pixel-wise regression loss (e.g., MSE or L1) between the predicted and ground truth pixel values of the masked patches:
 
 `loss = criterion(predicted_pixels, target_pixels)`
 
-## ⚙️ Training: SimMIMTrainer
+## Training: SimMIMTrainer
 
 Implemented in trainer.py, this trainer:
 
@@ -67,7 +67,7 @@ Implemented in trainer.py, this trainer:
 - Flattens predictions and targets for loss computation
 - Supports warmup schedulers and logs training/validation metrics
 
-## 🧪 Validation
+## Validation
 
 Validation follows the same logic as training, but without gradient updates. It:
 

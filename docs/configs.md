@@ -1,12 +1,12 @@
 # 🛠️ Configuration Guide
 
-## ⚙️ Configuration Structure
+## Configuration Structure
 
 The project uses [Hydra](https://hydra.cc/) for modular, hierarchical configuration management. Configs are split into **base definitions** and **method-specific overrides** (DINO, SimMIM, Supervised, Fine-tuning).
 
 ---
 
-### 📁 Directory Structure
+### Directory Structure
 
 <pre><code class="language-text"> 
 configs/
@@ -32,7 +32,7 @@ configs/
 
 ---
 
-### 🧱 `base/`: Shared Configs
+### `base/`: Shared Configs
 
 Used by all training types to define common logic:
 
@@ -42,7 +42,7 @@ Used by all training types to define common logic:
 
 ---
 
-### 🧩 Method-Specific Overrides
+### Method-Specific Overrides
 
 Each training strategy has its own folder (e.g. `dino/`, `simmim/`) that overrides or extends the base values.
 
@@ -70,7 +70,7 @@ hydra:
 
 ---
 
-🔁 Root Composition (config.yaml)
+Root Composition (config.yaml)
 
 Sets the active method (e.g. DINO, SimMIM):
 
@@ -84,7 +84,7 @@ To switch training modes, change dino.yaml to simmim.yaml, finetune.yaml, etc.
 
 ---
 
-📂 Output Directory
+Output Directory
 
 Each run saves outputs in a method+timestamp-based directory:
 

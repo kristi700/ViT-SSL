@@ -4,7 +4,7 @@ This section documents the supervised classification pipeline using Vision Trans
 
 ---
 
-## 🧱 Architecture: `ViT`
+## Architecture: `ViT`
 
 The model is implemented in `model.py` and follows the original ViT structure:
 
@@ -12,13 +12,13 @@ The model is implemented in `model.py` and follows the original ViT structure:
 - **Transformer Encoder**: stacked `EncoderBlock`s
 - **Classification Head**: a LayerNorm + Linear projection (`MLPHead`) applied to the `[CLS]` token
 
-### 🔷 Components:
+### Components:
 - `ConvolutionalPatchEmbedding`: Conv2D patch tokenizer
 - `ManualPatchEmbedding`: Alternative unfold + linear patching
 - `EncoderBlock`: Multi-head attention block
 - `MLPHead`: Classifier head
 
-### 🔁 Forward Flow:
+### Forward Flow:
 
 ```python
 x = patch_embedding(image)
@@ -27,7 +27,7 @@ cls_token = x[:, 0]
 logits = classification_head(cls_token)
 ```
 
-## ⚙️ Patch Embedding Variants
+## Patch Embedding Variants
 
 Two types of patch embedding are supported:
 
@@ -39,11 +39,11 @@ Two types of patch embedding are supported:
 
 Each variant prepends a learnable `[CLS]` token and adds a positional embedding.
 
-## 🧠 Classification Head: MLPHead
+## Classification Head: MLPHead
 - A lightweight head that normalizes and linearly maps the CLS token to the number of classes.
 - Can be replaced with a deeper head if needed for finetuning.
 
-##  ⚙️ Training: SupervisedTrainer
+##  Training: SupervisedTrainer
 
 Defined in trainer.py, this trainer handles:
 
@@ -52,7 +52,7 @@ Defined in trainer.py, this trainer handles:
 - Scheduler warmup
 - Backbone freezing/unfreezing for transfer learning or finetuning
 
-## 🔁 Finetuning Support
+## Finetuning Support
 
 If using pre-trained weights (e.g., from SimMIM or DINO), the system supports:
 
@@ -60,9 +60,9 @@ If using pre-trained weights (e.g., from SimMIM or DINO), the system supports:
 - Selective layer skipping (e.g., skipping simmim_head or mask_token)
 - Positional embedding interpolation if patch count differs
 
-This is handled via the `load_pretrained_model()` utility.
+For details on finetuning, see the [Finetune](training/finetune.md) section.
 
-🧩 Component Summary
+Component Summary
 
 | Component                   | File                  | Role                                               |
 |----------------------------|------------------------|----------------------------------------------------|

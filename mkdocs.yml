@@ -9,9 +9,12 @@ nav:
   - Home: index.md
   - Configuration Guide: configs.md
   - Code Structure: architecture.md
+  - Data Format: data.md
+  - Evaluation Scripts: evaluation.md
   - Training Methods:
       - Overview: training/index.md
       - DINO: training/dino.md
       - SimMIM: training/simmim.md
       - Supervised: training/supervised.md
+      - Finetuning: training/finetune.md
 repo_url: https://github.com/kristi700/ViT-SSL
