@@ -1,4 +1,4 @@
-# Configuration Guide
+# 🛠️ Configuration Guide
 
 ## ⚙️ Configuration Structure
 
@@ -11,7 +11,8 @@ The project uses [Hydra](https://hydra.cc/) for modular, hierarchical configurat
 <pre><code class="language-text"> 
 configs/
 ├── base/ # Shared defaults for all training types 
-│ ├── data.yaml │ ├── model.yaml 
+│ ├── data.yaml 
+│ ├── model.yaml 
 │ └── training.yaml 
 ├── dino/ # DINO-specific overrides 
 │ ├── data.yaml 

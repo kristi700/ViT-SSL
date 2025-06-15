@@ -8,4 +8,10 @@ theme:
 nav:
   - Home: index.md
   - Configuration Guide: configs.md
+  - Code Structure: architecture.md
+  - Training Methods:
+      - Overview: training/index.md
+      - DINO: training/dino.md
+      - SimMIM: training/simmim.md
+      - Supervised: training/supervised.md
 repo_url: https://github.com/kristi700/ViT-SSL

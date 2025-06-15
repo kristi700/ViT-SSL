@@ -1,4 +1,4 @@
-# Welcome to ViT-SSL  👾
+# 👾 Welcome to ViT-SSL
 
 > A PyTorch framework for Self-Supervised and Supervised Learning with Vision Transformers.
 
@@ -47,4 +47,5 @@ To switch between methods (e.g., Supervised, DINO, SimMIM, Fine-tuning), simply 
 
 📄 For more on available config options, see [Configuration Guide](configs.md).
 
+For a tour of the codebase, see [Code Structure](architecture.md).
 ---
