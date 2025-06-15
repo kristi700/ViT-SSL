@@ -45,7 +45,8 @@ This site contains detailed documentation of the project’s structure — expla
 Training is unified under a single entry point: **`train.py`**.  
 To switch between methods (e.g., Supervised, DINO, SimMIM, Fine-tuning), simply set the `training.type` field in the config file.
 
-📄 For more on available config options, see [Configuration Guide](configs.md).
+🛠️ For more on available config options, see [Configuration Guide](configs.md).
 
-For a tour of the codebase, see [Code Structure](architecture.md).
+🗂️ For a tour of the codebase, see [Code Structure](architecture.md).
+
 ---
