@@ -1,0 +1,2 @@
+mode: 'eval_dino'
+experiment_path: 'experiments/dino_unsupervised/2025-06-16_12_03_26'

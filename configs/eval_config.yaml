@@ -1,0 +1,3 @@
+defaults:
+  - knn_eval.yaml
+  - _self_ # Overwrite everything before

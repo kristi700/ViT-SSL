@@ -1,0 +1,7 @@
+defaults:
+  - knn_eval@eval: eval
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

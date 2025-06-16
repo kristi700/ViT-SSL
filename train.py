@@ -5,10 +5,10 @@ import torch
 from torch.utils.data import DataLoader, random_split, Subset
 
 from vit_core.vit import ViT
-from utils.schemas import Config
 from utils.train_utils import get_transforms
 from vit_core.ssl.dino.model import DINOViT
 from vit_core.ssl.simmim.model import SimMIMViT
+from utils.schemas.training_schemas import Config
 from utils.trainers import SupervisedTrainer, SimMIMTrainer, DINOTrainer
 from data.datasets import (
     CIFAR10Dataset,
