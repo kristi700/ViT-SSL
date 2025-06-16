@@ -10,3 +10,4 @@ opencv-python
 pytest
 matplotlib
 hydra-core
+scikit-learn
