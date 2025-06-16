@@ -1,2 +1,6 @@
 mode: 'eval_dino'
 experiment_path: 'experiments/dino_unsupervised/2025-06-16_12_03_26'
+
+dataset_name: 'stl10'
+data_csv: 'training_data/stl10/train_labels.json'
+data_dir: 'training_data/stl10/train_images'

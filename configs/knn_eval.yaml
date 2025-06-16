@@ -1,5 +1,7 @@
 defaults:
   - knn_eval@eval: eval
+  - knn_eval@eval.transforms.train: transforms
+  - knn_eval@eval.transforms.val: transforms
 
 hydra:
   run:

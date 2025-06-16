@@ -3,14 +3,29 @@ import sys
 import hydra
 import torch
 
+from tqdm import tqdm
 from omegaconf import OmegaConf
+from sklearn.metrics import accuracy_score
+from sklearn.neighbors import KNeighborsClassifier
+from torch.utils.data import DataLoader, random_split, Subset
 
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, project_root)
 
+from utils.train_utils import get_transforms
 from vit_core.ssl.dino.model import DINOViT
-
+from data.datasets import (
+    CIFAR10Dataset,
+    STL10Dataset,
+)
+# TODO - make it work with different methods, not just DINO
 # TODO - unify these model buildings + loadings into one ModelBuilder!
+
+def setup_device():
+    """Setup and return the appropriate device (CUDA/CPU)."""
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+    return device
 
 def _load_weights(model, config):
     """Load pretrained weights into the model."""
@@ -104,13 +119,83 @@ def load_experiment_config(path: str):
 
     return base_cfg
 
+def extract_features(model, dataloader, device):
+    features = []
+    labels = []
+
+    model.eval()
+    with torch.no_grad():
+        for images, lbls in tqdm(dataloader, desc="Extracting features"):
+            images = images.to(device)
+            feats = model._student_forward(images) # TODO - dont use private methods
+            features.append(feats.cpu())
+            labels.append(lbls)
+
+    features = torch.cat(features)
+    labels = torch.cat(labels)
+    return features, labels
+
+def _get_dataset(config, transform):
+    if config['eval']['dataset_name'].lower() == 'stl10':
+        return STL10Dataset(
+            config["eval"]["data_csv"], config["eval"]["data_dir"], transform
+        )
+    elif config['eval']['dataset_name'].lower() == 'stl10':
+        return CIFAR10Dataset(
+            config["eval"]["data_csv"], config["eval"]["data_dir"], transform
+        )
+
+def prepare_dataloaders(config, transforms):
+    train_dataset_full = _get_dataset(config, transform=transforms["train"])
+    val_dataset_full = _get_dataset(config, transform=transforms["val"])
+    total_size = len(train_dataset_full)
+    val_size = int(total_size * config["data"]["val_split"])
+    train_size = total_size - val_size
+
+    generator = torch.Generator().manual_seed(config["training"]["random_seed"])
+    train_subset_indices, val_subset_indices = random_split(
+        range(total_size), [train_size, val_size], generator=generator
+    )
+
+    train_dataset = Subset(train_dataset_full, train_subset_indices.indices)
+    val_dataset = Subset(val_dataset_full, val_subset_indices.indices)
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=config["training"]["batch_size"],
+        shuffle=True,
+        num_workers=config["data"]["num_workers"],
+        pin_memory=True,
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=config["training"]["batch_size"],
+        shuffle=False,
+        num_workers=config["data"]["num_workers"],
+        pin_memory=True,
+    )
+
+    return train_loader, val_loader
+
 @hydra.main(config_path="../../configs", config_name="eval_config", version_base=None)
 def main(config): # TODO add schema?
+    device = setup_device()
     experiment_config = load_experiment_config(config["eval"]["experiment_path"])
     OmegaConf.set_struct(config, False)
     config = OmegaConf.merge(config, experiment_config)
-    model = build_model(config)
+    model = build_model(config).to(device)
+    # TODO - instantiate dataloader
+    transforms = get_transforms(config['eval']) # TODO match the loaded models input size!!!!
+    train_loader, val_loader = prepare_dataloaders(config, transforms)
 
+    train_features, train_labels = extract_features(model, train_loader, device)
+    val_features, val_labels = extract_features(model, val_loader, device)
+
+    knn = KNeighborsClassifier(n_neighbors=5, metric='cosine')
+    knn.fit(train_features, train_labels)
+    preds = knn.predict(val_features)
+    accuracy = accuracy_score(val_labels, preds)
+    print(f"Top-1 k-NN Accuracy: {accuracy * 100:.2f}%")
 
 if __name__ == "__main__":
     main()
