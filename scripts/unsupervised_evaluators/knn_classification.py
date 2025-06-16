@@ -71,11 +71,6 @@ def _load_weights(model, config):
     print(f"Unexpected keys: {unexpected_keys}")
     return model
 
-def _freeze_weights(model):
-    for param in model.parameters():
-        param.requires_grad = False
-    return model
-
 # TODO - add simmim in here later as well!
 def build_model(config):
     mode = config["eval"]["mode"].lower()
@@ -98,7 +93,6 @@ def build_model(config):
             center_momentum=config["model"]["center_momentum"],
         )
         model = _load_weights(model, config) # TODO doublecheck
-        model = _freeze_weights(model)
     return model
 
 def load_experiment_config(path: str):
