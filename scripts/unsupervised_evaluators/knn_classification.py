@@ -15,8 +15,6 @@ from utils.model_builder import build_model
 from data.data_builder import prepare_dataloaders
 from utils.train_utils import get_transforms, setup_device
 
-# TODO - make it work with different methods, not just DINO
-
 def load_experiment_config(path: str):
     """Loads saved Hydra config and overrides from an experiment folder (using os.path)."""
     hydra_dir = os.path.join(path, ".hydra")
