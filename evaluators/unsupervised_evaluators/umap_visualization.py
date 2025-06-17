@@ -7,8 +7,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from umap import UMAP
-from tqdm import tqdm
-from omegaconf import OmegaConf
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score, adjusted_rand_score
 
@@ -17,46 +15,11 @@ project_root = os.path.dirname(
 )
 sys.path.insert(0, project_root)
 
+from evaluator_utils import *
 from utils.model_builder import build_model
 from data.data_builder import prepare_dataloaders
 from utils.schemas.eval_schemas import EvaluationConfig
 from utils.train_utils import get_transforms, setup_device
-
-
-def load_experiment_config(path: str):
-    """Loads saved Hydra config and overrides from an experiment folder (using os.path)."""
-    hydra_dir = os.path.join(path, ".hydra")
-    config_path = os.path.join(hydra_dir, "config.yaml")
-    overrides_path = os.path.join(hydra_dir, "overrides.yaml")
-
-    if not os.path.exists(config_path):
-        raise FileNotFoundError(f"Missing: {config_path}")
-
-    base_cfg = OmegaConf.load(config_path)
-
-    if os.path.exists(overrides_path):
-        overrides = OmegaConf.load(overrides_path)
-        if overrides:
-            base_cfg = OmegaConf.merge(base_cfg, OmegaConf.from_dotlist(overrides))
-
-    return base_cfg
-
-
-def extract_features(model, dataloader, device):
-    features = []
-    labels = []
-
-    model.eval()
-    with torch.no_grad():
-        for images, lbls in tqdm(dataloader, desc="Extracting features"):
-            images = images.to(device)
-            feats = model.inference_forward(images)
-            features.append(feats.cpu())
-            labels.append(lbls)
-
-    features = torch.cat(features)
-    labels = torch.cat(labels)
-    return features, labels
 
 
 def evaluate_feature_quality(features, labels, embedding, sample_size=2000):
@@ -264,10 +227,7 @@ def create_comprehensive_umap_analysis(
 @hydra.main(config_path="../../configs", config_name="eval_config", version_base=None)
 def main(config: EvaluationConfig):
     device = setup_device()
-    experiment_config = load_experiment_config(config["eval"]["experiment_path"])
-
-    OmegaConf.set_struct(config, False)
-    config = OmegaConf.merge(config, experiment_config)
+    config = merge_with_experiment_config(config)
 
     model = build_model(config).to(device)
 
@@ -283,11 +243,9 @@ def main(config: EvaluationConfig):
     labels = torch.cat((train_labels, val_labels))
 
     print(
-        f"Starting UMAP on {features.shape[0]} samples with {features.shape[1]} dimensions..."
+        f"Starting UMAP on {features.shape[0]} samples with {features.shape[1]} dimensions"
     )
-    reducer = UMAP(
-        n_neighbors=15, min_dist=0.1, metric="euclidean", verbose=True, random_state=42
-    )
+    reducer = UMAP(n_neighbors=15, min_dist=0.1, metric="euclidean", verbose=True)
     embedding = reducer.fit_transform(features)
 
     plt.figure(figsize=(10, 8))
@@ -376,12 +334,7 @@ def main(config: EvaluationConfig):
         for fb in feedback:
             f.write(f"• {fb}\n")
 
-    print(f"Analysis complete! Files saved:")
-    print(f"  - umap_visualization.png (basic UMAP plot)")
-    print(f"  - comprehensive_umap_analysis.png (detailed analysis)")
-    print(f"  - umap_feature_quality_results.csv (metrics table)")
-    print(f"  - umap_feature_quality_report.txt (formatted report)")
-    print(f"  - Overall quality: {quality}")
+    print(f"Analysis complete!")
 
 
 if __name__ == "__main__":
