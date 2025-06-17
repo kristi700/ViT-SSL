@@ -13,6 +13,7 @@ sys.path.insert(0, project_root)
 
 from utils.model_builder import build_model
 from data.data_builder import prepare_dataloaders
+from utils.schemas.eval_schemas import EvaluationConfig
 from utils.train_utils import get_transforms, setup_device
 
 def load_experiment_config(path: str):
@@ -50,7 +51,7 @@ def extract_features(model, dataloader, device):
     return features, labels
 
 @hydra.main(config_path="../../configs", config_name="eval_config", version_base=None)
-def main(config): # TODO add schema?
+def main(config: EvaluationConfig):
     device = setup_device()
     experiment_config = load_experiment_config(config["eval"]["experiment_path"])
     

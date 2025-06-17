@@ -2,6 +2,7 @@ from enum import Enum
 from typing import List
 from .data import DataConfig
 from .model import ModelConfig
+from omegaconf import OmegaConf
 from .training import TrainingConfig
 from .transforms import TransformConfig
 from dataclasses import dataclass, field
@@ -31,7 +32,7 @@ class TransformsConfig:
 
 
 @dataclass
-class Config:
+class TrainConfig:
     model: ModelConfig
     data: DataConfig
     training: TrainingConfig
@@ -40,4 +41,4 @@ class Config:
 
 
 cs = ConfigStore.instance()
-cs.store(name="config_schema", node=Config)
+cs.store(name="training_config", node=TrainConfig)

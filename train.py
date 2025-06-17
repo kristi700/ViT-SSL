@@ -4,7 +4,7 @@ import torch
 
 from utils.model_builder import build_model 
 from data.data_builder import prepare_dataloaders
-from utils.schemas.training_schemas import Config
+from utils.schemas.training_schemas import TrainConfig
 from utils.train_utils import get_transforms, setup_device
 from utils.trainers import SupervisedTrainer, SimMIMTrainer, DINOTrainer
 
@@ -84,7 +84,7 @@ def get_save_path():
 
 
 @hydra.main(config_path="configs", config_name="config", version_base=None)
-def main(config: Config):
+def main(config: TrainConfig):
     """Main training function."""
     mode = config["training"]["type"].lower()
     print(f"Starting training with mode: {mode}")
