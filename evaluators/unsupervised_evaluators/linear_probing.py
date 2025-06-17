@@ -3,7 +3,7 @@ import sys
 import hydra
 
 from sklearn.metrics import accuracy_score
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
 
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, project_root)
@@ -27,11 +27,11 @@ def main(config: EvaluationConfig):
     train_features, train_labels = extract_features(model, train_loader, device)
     val_features, val_labels = extract_features(model, val_loader, device)
 
-    knn = KNeighborsClassifier(n_neighbors=config["eval"]["num_classes"], metric='cosine')
-    knn.fit(train_features, train_labels)
-    preds = knn.predict(val_features)
+    clf = LogisticRegression(max_iter=1000, solver='lbfgs', multi_class='multinomial')
+    clf.fit(train_features, train_labels)
+    preds = clf.predict(val_features)
     accuracy = accuracy_score(val_labels, preds)
-    print(f"Top-1 k-NN Accuracy: {accuracy * 100:.2f}%")
+    print(f"Top-1 Linear Probing Accuracy: {accuracy * 100:.2f}%")
 
 if __name__ == "__main__":
     main()
