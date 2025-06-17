@@ -27,7 +27,7 @@ def main(config: EvaluationConfig):
     train_features, train_labels = extract_features(model, train_loader, device)
     val_features, val_labels = extract_features(model, val_loader, device)
 
-    clf = LogisticRegression(max_iter=1000, solver='lbfgs', multi_class='multinomial')
+    clf = LogisticRegression(max_iter=1000, solver='lbfgs')
     clf.fit(train_features, train_labels)
     preds = clf.predict(val_features)
     accuracy = accuracy_score(val_labels, preds)
