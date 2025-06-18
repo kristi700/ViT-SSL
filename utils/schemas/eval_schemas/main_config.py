@@ -5,6 +5,7 @@ from .transforms import TransformConfig
 from dataclasses import dataclass, field
 from hydra.core.config_store import ConfigStore
 
+
 @dataclass
 class TransformsConfig:
     globals: List[TransformConfig] = field(default_factory=list)
@@ -17,6 +18,7 @@ class TransformsConfig:
 class EvaluationConfig:
     eval: EvalConfig
     transforms: TransformsConfig
+
 
 cs = ConfigStore.instance()
 cs.store(name="evaluation_config", node=EvaluationConfig)

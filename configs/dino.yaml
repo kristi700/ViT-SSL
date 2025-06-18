@@ -5,6 +5,7 @@ defaults:
   - base@model: model
   - base@training: training
 
+  - dino@eval: eval
   - dino@data: data
   - dino@model: model
   - dino@training: training

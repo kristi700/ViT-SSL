@@ -1,4 +1,6 @@
 import torch
+
+from omegaconf import OmegaConf
 from torch.utils.data import DataLoader, random_split, Subset
 
 from .datasets import (
@@ -20,7 +22,7 @@ def _get_dataset(config, mode, transforms):
 
     data_csv = config.get("eval", {}).get("data_csv", data_cfg.get("data_csv"))
 
-    if mode in ["supervised", "finetune", "eval_knn"]:
+    if mode in ["supervised", "finetune", "eval_knn", "eval_linear", "eval_umap"]:
         if dataset_name == "cifar10":
             return CIFAR10Dataset(
                 data_csv, data_dir, transform=transforms["train"]
@@ -57,6 +59,34 @@ def _get_dataset(config, mode, transforms):
         raise ValueError(f"Unknown mode for dataset creation: {mode}")
 
 
+def determine_dataset_mode_from_eval_modes(eval_modes):
+    """
+    Determine the appropriate dataset mode based on evaluation modes.
+    All evaluation modes use supervised/labeled datasets.
+
+    Args:
+        eval_modes (str or list): Single mode or list of evaluation modes
+
+    Returns:
+        str: The dataset mode to use for data loading
+    """
+    if isinstance(eval_modes, str):
+        eval_modes = [eval_modes]
+
+    supervised_modes = {
+        "eval_knn",
+        "eval_linear",
+        "eval_umap",
+        "supervised",
+        "finetune",
+    }
+
+    if any(mode in supervised_modes for mode in eval_modes):
+        return "supervised"
+
+    return eval_modes[0] if eval_modes else "supervised"
+
+
 def prepare_dataloaders(config, transforms, mode):
     """
     Prepare train and validation dataloaders based on the configuration.
@@ -72,9 +102,13 @@ def prepare_dataloaders(config, transforms, mode):
     Returns:
         tuple: (train_loader, val_loader)
     """
-
-    data_loading_mode = mode.lower()
-    print(f"Preparing dataloaders for mode: '{data_loading_mode}'")
+    if OmegaConf.is_list(mode):
+        data_loading_mode = determine_dataset_mode_from_eval_modes(mode)
+        print(f"Multiple evaluation modes detected: {mode}")
+        print(f"Using dataset mode: '{data_loading_mode}' for data loading")
+    else:
+        data_loading_mode = mode.lower()
+        print(f"Preparing dataloaders for mode: '{data_loading_mode}'")
 
     train_dataset_full, val_dataset_full = _get_dataset(
         config, data_loading_mode, transforms

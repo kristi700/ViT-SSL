@@ -185,6 +185,7 @@ def build_model(config):
 
     return model
 
+
 def _check_loaded_model(model, config):
     """Check which parameters are frozen/trainable and verify loading."""
     print("\n=== Checking loaded model ===")

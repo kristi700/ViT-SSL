@@ -136,12 +136,12 @@ class DINOViT(nn.Module):
     def inference_forward(self, x: torch.Tensor, return_features=False):
         """
         Clean inference forward pass using teacher backbone.
-        
+
         """
-        self.eval() 
-        
+        self.eval()
+
         features = self.teacher_backbone(x)
-        
+
         if return_features:
             return features
 

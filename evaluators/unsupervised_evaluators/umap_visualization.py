@@ -15,7 +15,7 @@ project_root = os.path.dirname(
 )
 sys.path.insert(0, project_root)
 
-from evaluator_utils import *
+from evaluators.unsupervised_evaluators.evaluator_utils import *
 from utils.model_builder import build_model
 from data.data_builder import prepare_dataloaders
 from utils.schemas.eval_schemas import EvaluationConfig
@@ -164,9 +164,7 @@ def assess_quality(metrics):
     return quality, feedback
 
 
-def create_comprehensive_umap_analysis(
-    embedding, labels, features, save_path
-):
+def create_comprehensive_umap_analysis(embedding, labels, features, save_path):
     """Create multiple visualizations for comprehensive analysis"""
 
     if isinstance(labels, torch.Tensor):
@@ -224,44 +222,84 @@ def create_comprehensive_umap_analysis(
     plt.close()
 
 
-@hydra.main(config_path="../../configs", config_name="eval_config", version_base=None)
-def main(config: EvaluationConfig):
-    device = setup_device()
-    config = merge_with_experiment_config(config)
+def run_umap_analysis(features, labels, output_dir, umap_params=None):
+    """
+    Run UMAP analysis on features and generate visualizations and quality reports.
 
-    model = build_model(config).to(device)
+    Args:
+        features (torch.Tensor): Feature tensor
+        labels (torch.Tensor): Label tensor
+        output_dir (str): Directory to save outputs
+        umap_params (dict, optional): UMAP parameters. Defaults to standard params.
 
-    transforms = get_transforms(config["eval"])
-    train_loader, val_loader = prepare_dataloaders(
-        config, transforms, config["eval"]["mode"]
-    )
+    Returns:
+        tuple: (embedding, metrics, quality, feedback)
+    """
 
-    train_features, train_labels = extract_features(model, train_loader, device)
-    val_features, val_labels = extract_features(model, val_loader, device)
-
-    features = torch.cat((train_features, val_features))
-    labels = torch.cat((train_labels, val_labels))
+    if umap_params is None:
+        umap_params = {
+            "n_neighbors": 15,
+            "min_dist": 0.1,
+            "metric": "euclidean",
+            "verbose": True,
+        }
 
     print(
         f"Starting UMAP on {features.shape[0]} samples with {features.shape[1]} dimensions"
     )
-    reducer = UMAP(n_neighbors=15, min_dist=0.1, metric="euclidean", verbose=True)
+    reducer = UMAP(**umap_params)
     embedding = reducer.fit_transform(features)
 
+    create_basic_umap_plot(embedding, labels, output_dir)
+
+    print("Starting feature quality evaluation...")
+    metrics = evaluate_feature_quality(features, labels, embedding, sample_size=2000)
+    quality, feedback = assess_quality(metrics)
+
+    create_comprehensive_umap_analysis(
+        embedding,
+        labels,
+        features,
+        os.path.join(output_dir, "comprehensive_umap_analysis.png"),
+    )
+
+    save_umap_results(metrics, quality, feedback, output_dir)
+
+    print("Analysis complete!")
+    return embedding, metrics, quality, feedback
+
+
+def create_basic_umap_plot(embedding, labels, output_dir):
+    """
+    Create and save basic UMAP scatter plot.
+
+    Args:
+        embedding (numpy.ndarray): UMAP embedding coordinates
+        labels (torch.Tensor): Labels for coloring
+        output_dir (str): Directory to save the plot
+    """
     plt.figure(figsize=(10, 8))
     plt.scatter(embedding[:, 0], embedding[:, 1], c=labels, cmap="Spectral", s=5)
     plt.colorbar()
     plt.title("UMAP projection of learned features")
     plt.xlabel("UMAP 1")
     plt.ylabel("UMAP 2")
-    plt.savefig(os.path.join(config['eval']['experiment_path'],"umap_visualization.png"), dpi=300, bbox_inches="tight")
+    plt.savefig(
+        os.path.join(output_dir, "umap_visualization.png"), dpi=300, bbox_inches="tight"
+    )
     plt.close()
 
-    print("Starting feature quality evaluation...")
-    metrics = evaluate_feature_quality(features, labels, embedding, sample_size=2000)
-    quality, feedback = assess_quality(metrics)
 
-    create_comprehensive_umap_analysis(embedding, labels, features, os.path.join(config['eval']['experiment_path'],"comprehensive_umap_analysis.png"))
+def save_umap_results(metrics, quality, feedback, output_dir):
+    """
+    Save UMAP analysis results to CSV and text files.
+
+    Args:
+        metrics (dict): Quality metrics dictionary
+        quality (str): Overall quality assessment
+        feedback (list): List of feedback strings
+        output_dir (str): Directory to save results
+    """
 
     results_data = {
         "Metric": [
@@ -315,10 +353,15 @@ def main(config: EvaluationConfig):
         )
 
     results_df = pd.DataFrame(results_data)
+    results_df.to_csv(
+        os.path.join(output_dir, "umap_feature_quality_results.csv"),
+        index=False,
+    )
 
-    results_df.to_csv(os.path.join(config['eval']['experiment_path'],"umap_feature_quality_results.csv"), index=False)
-
-    with open(os.path.join(config['eval']['experiment_path'],"umap_feature_quality_report.txt"), "w") as f:
+    with open(
+        os.path.join(output_dir, "umap_feature_quality_report.txt"),
+        "w",
+    ) as f:
         f.write("UMAP Feature Quality Analysis Report\n")
         f.write("=" * 40 + "\n\n")
         f.write(f"Overall Assessment: {quality}\n\n")
@@ -334,7 +377,47 @@ def main(config: EvaluationConfig):
         for fb in feedback:
             f.write(f"• {fb}\n")
 
-    print(f"Analysis complete!")
+
+def prepare_combined_features(train_features, train_labels, val_features, val_labels):
+    """
+    Combine training and validation features and labels.
+
+    Args:
+        train_features (torch.Tensor): Training features
+        train_labels (torch.Tensor): Training labels
+        val_features (torch.Tensor): Validation features
+        val_labels (torch.Tensor): Validation labels
+
+    Returns:
+        tuple: (combined_features, combined_labels)
+    """
+    features = torch.cat((train_features, val_features))
+    labels = torch.cat((train_labels, val_labels))
+    return features, labels
+
+
+@hydra.main(config_path="../../configs", config_name="eval_config", version_base=None)
+def main(config: EvaluationConfig):
+    device = setup_device()
+    config = merge_with_experiment_config(config)
+
+    model = build_model(config).to(device)
+
+    transforms = get_transforms(config["eval"])
+    train_loader, val_loader = prepare_dataloaders(
+        config, transforms, config["eval"]["mode"]
+    )
+
+    train_features, train_labels = extract_features(model, train_loader, device)
+    val_features, val_labels = extract_features(model, val_loader, device)
+
+    features, labels = prepare_combined_features(
+        train_features, train_labels, val_features, val_labels
+    )
+
+    embedding, metrics, quality, feedback = run_umap_analysis(
+        features, labels, config["eval"]["experiment_path"]
+    )
 
 
 if __name__ == "__main__":

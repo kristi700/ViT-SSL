@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import List
+from .eval import EvalConfig
 from .data import DataConfig
 from .model import ModelConfig
-from omegaconf import OmegaConf
 from .training import TrainingConfig
 from .transforms import TransformConfig
 from dataclasses import dataclass, field
@@ -33,8 +33,9 @@ class TransformsConfig:
 
 @dataclass
 class TrainConfig:
-    model: ModelConfig
+    eval: EvalConfig
     data: DataConfig
+    model: ModelConfig
     training: TrainingConfig
     transforms: TransformsConfig
     metrics: List[MetricName] = field(default_factory=list)

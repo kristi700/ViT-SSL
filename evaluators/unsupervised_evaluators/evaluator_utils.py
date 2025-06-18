@@ -4,6 +4,7 @@ import torch
 from tqdm import tqdm
 from omegaconf import OmegaConf
 
+
 def extract_features(model, dataloader, device):
     features = []
     labels = []
@@ -19,6 +20,7 @@ def extract_features(model, dataloader, device):
     features = torch.cat(features)
     labels = torch.cat(labels)
     return features, labels
+
 
 def _load_experiment_config(path: str):
     """Loads saved Hydra config and overrides from an experiment folder (using os.path)."""
@@ -37,6 +39,7 @@ def _load_experiment_config(path: str):
             base_cfg = OmegaConf.merge(base_cfg, OmegaConf.from_dotlist(overrides))
 
     return base_cfg
+
 
 def merge_with_experiment_config(config):
     exp_cfg = _load_experiment_config(config["eval"]["experiment_path"])

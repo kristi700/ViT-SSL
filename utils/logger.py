@@ -91,6 +91,14 @@ class Logger:
     def __exit__(self, exc_type, exc, tb):
         self.live.stop()
 
+    def pause(self):
+        self.live.stop()
+        self._clear_console()
+
+    def resume(self):
+        self._refresh_layout()
+        self.live.start()
+
     def train_log_step(self, epoch: int, batch_idx: int):
         """Call once per training batch."""
         desc = f"Epoch {epoch} / {self.num_epochs} Train"
