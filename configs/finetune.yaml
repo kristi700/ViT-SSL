@@ -1,5 +1,5 @@
 defaults:
-  - config_schema
+  - training_config
 
   - base@data: data
   - base@model: model
