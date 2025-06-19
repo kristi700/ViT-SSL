@@ -32,7 +32,7 @@ class BaseTrainer(ABC):
             self.warmup_epochs * len(train_loader),
         )
         self.metric_handler = MetricHandler(config)
-        self.logger = Logger(
+        self.train_logger = Logger(
             self.metric_handler.metric_names,
             len(train_loader),
             len(val_loader),
@@ -62,7 +62,7 @@ class BaseTrainer(ABC):
         """Common training loop"""
         end_epoch = self.start_epoch + num_epochs
 
-        with self.logger:
+        with self.train_logger:
             for epoch in range(self.start_epoch + 1, end_epoch + 1):
                 self.current_epoch = epoch
                 train_metrics = self.train_epoch(epoch)
@@ -79,8 +79,8 @@ class BaseTrainer(ABC):
 
     def _log_metrics(self, train_metrics, val_metrics):
         """Common logging logic"""
-        self.logger.log_train_epoch(**train_metrics)
-        self.logger.log_val_epoch(**val_metrics)
+        self.train_logger.log_train_epoch(**train_metrics)
+        self.train_logger.log_val_epoch(**val_metrics)
 
     def _save_if_best(self, epoch, val_loss):
         """Common checkpointing logic"""

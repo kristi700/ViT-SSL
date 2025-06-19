@@ -19,7 +19,7 @@ class SimMIMTrainer(BaseTrainer):
         """Common training loop with unsupervised validation"""
         end_epoch = self.start_epoch + num_epochs
 
-        with self.logger:
+        with self.train_logger:
             for epoch in range(self.start_epoch + 1, end_epoch + 1):
                 self.current_epoch = epoch
                 train_metrics = self.train_epoch(epoch)
@@ -37,14 +37,14 @@ class SimMIMTrainer(BaseTrainer):
                         run_evaluation,
                     )
 
-                    self.logger.pause()
+                    self.train_logger.pause()
                     run_evaluation(
                         self.config,
                         self.model,
                         self.device,
                         os.path.join(self.save_path, f"epoch_{epoch}"),
                     )
-                    self.logger.resume()
+                    self.train_logger.resume()
         self._vizualize()
 
     def train_epoch(
@@ -82,7 +82,7 @@ class SimMIMTrainer(BaseTrainer):
             )
             all_pred_patches.append(preds_patches)
             all_target_patches.append(targets_patches)
-            self.logger.train_log_step(epoch, idx)
+            self.train_logger.train_log_step(epoch, idx)
 
         metrics = self.metric_handler.calculate_metrics(
             preds_patches=torch.cat(all_pred_patches, dim=0),
@@ -116,7 +116,7 @@ class SimMIMTrainer(BaseTrainer):
                 )
                 all_pred_patches.append(preds_patches)
                 all_target_patches.append(targets_patches)
-                self.logger.val_log_step(idx)
+                self.train_logger.val_log_step(idx)
 
         metrics = self.metric_handler.calculate_metrics(
             preds_patches=torch.cat(all_pred_patches, dim=0),

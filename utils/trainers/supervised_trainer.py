@@ -39,7 +39,7 @@ class SupervisedTrainer(BaseTrainer):
             running_loss += loss.item() * inputs.size(0)
             correct += (preds.argmax(1) == labels).sum().item()
             total += labels.size(0)
-            self.logger.train_log_step(epoch, idx)
+            self.train_logger.train_log_step(epoch, idx)
 
         metrics = self.metric_handler.calculate_metrics(correct=correct, total=total)
         metrics["Loss"] = running_loss / total
@@ -57,7 +57,7 @@ class SupervisedTrainer(BaseTrainer):
                 running_loss += loss.item() * inputs.size(0)
                 correct += (preds.argmax(1) == labels).sum().item()
                 total += labels.size(0)
-                self.logger.val_log_step(idx)
+                self.train_logger.val_log_step(idx)
 
         metrics = self.metric_handler.calculate_metrics(correct=correct, total=total)
         metrics["Loss"] = running_loss / total
@@ -66,7 +66,7 @@ class SupervisedTrainer(BaseTrainer):
     def fit(self, num_epochs: int):
         end_epoch = self.start_epoch + num_epochs
 
-        with self.logger:
+        with self.train_logger:
             for epoch in range(self.start_epoch + 1, end_epoch + 1):
                 self.current_epoch = epoch
                 if self.freeze_backbone and epoch == self.freeze_backbone_epochs:
