@@ -13,3 +13,4 @@ hydra-core
 scikit-learn
 umap-learn
 seaborn
+pillow
