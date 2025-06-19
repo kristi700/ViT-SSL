@@ -2,6 +2,7 @@ import os
 import sys
 import hydra
 import torch
+import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -21,6 +22,7 @@ from data.data_builder import prepare_dataloaders
 from utils.schemas.eval_schemas import EvaluationConfig
 from utils.train_utils import get_transforms, setup_device
 
+logger = logging.getLogger(__name__)
 
 def evaluate_feature_quality(features, labels, embedding, sample_size=2000):
     """Compute various metrics to assess feature quality - optimized for large datasets"""
@@ -30,13 +32,10 @@ def evaluate_feature_quality(features, labels, embedding, sample_size=2000):
     if isinstance(labels, torch.Tensor):
         labels = labels.numpy()
 
-    print(
-        f"Evaluating features: {features.shape[0]} samples, {features.shape[1]} dimensions"
-    )
-
+    logger.info( f"Evaluating features: {features.shape[0]} samples, {features.shape[1]} dimensions")
     if len(features) > sample_size:
-        print(f"Sampling {sample_size} points for expensive computations...")
 
+        logger.info(f"Sampling {sample_size} points for expensive computations...")
         from sklearn.model_selection import train_test_split
 
         _, sampled_features, _, sampled_labels = train_test_split(
@@ -48,16 +47,16 @@ def evaluate_feature_quality(features, labels, embedding, sample_size=2000):
 
     sil_score_umap = silhouette_score(embedding, labels)
 
-    print("Computing silhouette score on features...")
+    logger.info("Computing silhouette score on features...")
     sil_score_features = silhouette_score(sampled_features, sampled_labels)
 
-    print("Running K-means clustering...")
+    logger.info("Running K-means clustering...")
     n_clusters = len(np.unique(labels))
     kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=3, max_iter=100)
     kmeans_labels = kmeans.fit_predict(sampled_features)
     ari_score = adjusted_rand_score(sampled_labels, kmeans_labels)
 
-    print("Computing class separation metrics...")
+    logger.info("Computing class separation metrics...")
     unique_labels = np.unique(labels)
 
     class_centers = {}
@@ -244,15 +243,13 @@ def run_umap_analysis(features, labels, output_dir, umap_params=None):
             "verbose": True,
         }
 
-    print(
-        f"Starting UMAP on {features.shape[0]} samples with {features.shape[1]} dimensions"
-    )
+    logger.info(f"Starting UMAP on {features.shape[0]} samples with {features.shape[1]} dimensions")
     reducer = UMAP(**umap_params)
     embedding = reducer.fit_transform(features)
 
     create_basic_umap_plot(embedding, labels, output_dir)
 
-    print("Starting feature quality evaluation...")
+    logger.info("Starting feature quality evaluation...")
     metrics = evaluate_feature_quality(features, labels, embedding, sample_size=2000)
     quality, feedback = assess_quality(metrics)
 
@@ -265,7 +262,7 @@ def run_umap_analysis(features, labels, output_dir, umap_params=None):
 
     save_umap_results(metrics, quality, feedback, output_dir)
 
-    print("Analysis complete!")
+    logger.info("Analysis complete!")
     return embedding, metrics, quality, feedback
 
 

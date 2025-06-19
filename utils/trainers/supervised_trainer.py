@@ -1,10 +1,12 @@
 import os
 import math
 import torch
+import logging
 
 from .base_trainer import BaseTrainer
 from utils.train_utils import make_optimizer
 
+logger = logging.getLogger(__name__)
 
 class SupervisedTrainer(BaseTrainer):
     def __init__(self, *args, **kwargs):
@@ -86,7 +88,7 @@ class SupervisedTrainer(BaseTrainer):
     def _save_if_best(self, epoch: int, val_accuracy: float):
         if val_accuracy > self.best_val_acc:
             best_val_acc = val_accuracy
-            print(f"New best validation accuracy: {best_val_acc:.4f}. Saving model...")
+            logger.info(f"New best validation accuracy: {best_val_acc:.4f}. Saving model...")
             checkpoint = {
                 "epoch": epoch,
                 "model_state_dict": self.model.state_dict(),

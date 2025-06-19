@@ -1,8 +1,11 @@
 import os
+import logging
+
 from typing import List
-from rich.console import Console, Group
 from rich.live import Live
 from rich.table import Table
+from rich.layout import Layout
+from rich.console import Console, Group
 from rich.progress import (
     Progress,
     BarColumn,
@@ -10,8 +13,8 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from rich.layout import Layout
 
+logger = logging.getLogger(__name__)
 
 class Logger:
     def __init__(
@@ -122,7 +125,7 @@ class Logger:
             value = metrics.get(name, 0)
             self.train_table.add_row(name, f"{value:.4f}")
 
-        print(f"Train table now has {len(self.train_table.rows)} rows")
+        logger.info(f"Train table now has {len(self.train_table.rows)} rows")
         self._refresh_layout()
 
     def log_val_epoch(self, **metrics: float):
@@ -135,5 +138,5 @@ class Logger:
             value = metrics.get(name, 0)
             self.val_table.add_row(name, f"{value:.4f}")
 
-        print(f"Val table now has {len(self.val_table.rows)} rows")
+        logger.info(f"Val table now has {len(self.val_table.rows)} rows")
         self._refresh_layout()

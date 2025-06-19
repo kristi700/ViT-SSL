@@ -1,6 +1,7 @@
 import os
 import math
 import torch
+import logging
 
 from abc import ABC, abstractmethod
 
@@ -9,6 +10,7 @@ from utils.metrics import MetricHandler
 from utils.history import TrainingHistory
 from utils.train_utils import make_optimizer, make_schedulers, make_criterion
 
+logger = logging.getLogger(__name__)
 
 class BaseTrainer(ABC):
     def __init__(self, model, save_path: str, config, train_loader, val_loader, device):
@@ -84,7 +86,7 @@ class BaseTrainer(ABC):
         """Common checkpointing logic"""
         if self.best_val_loss > val_loss:
             best_val_loss = val_loss
-            print(f"New best validation loss: {best_val_loss:.4f}. Saving model...")
+            logger.info(f"New best validation loss: {best_val_loss:.4f}. Saving model...")
             checkpoint = {
                 "epoch": epoch,
                 "model_state_dict": self.model.state_dict(),

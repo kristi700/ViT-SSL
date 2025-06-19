@@ -1,10 +1,12 @@
 import os
 import torch
+import logging
 
 from vit_core.vit import ViT
 from vit_core.ssl.dino.model import DINOViT
 from vit_core.ssl.simmim.model import SimMIMViT
 
+logger = logging.getLogger(__name__)
 
 def load_weights(model, checkpoint_path: str):
     """
@@ -26,7 +28,7 @@ def load_weights(model, checkpoint_path: str):
     if not os.path.exists(checkpoint_path):
         raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
 
-    print(f"Loading weights from: {checkpoint_path}")
+    logger.info(f"Loading weights from: {checkpoint_path}")
 
     pretrained_checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
@@ -42,9 +44,7 @@ def load_weights(model, checkpoint_path: str):
             if v.shape == model_ft_state_dict[k].shape:
                 new_state_dict[k] = v
             else:
-                print(
-                    f"Shape mismatch for '{k}': Pretrained {v.shape} vs Model {model_ft_state_dict[k].shape}"
-                )
+                logger.warning(f"Shape mismatch for '{k}': Pretrained {v.shape} vs Model {model_ft_state_dict[k].shape}")
 
         elif (
             k.startswith("projection.")
@@ -53,9 +53,9 @@ def load_weights(model, checkpoint_path: str):
             new_key = f"patch_embedding.{k}"
             if v.shape == model_ft_state_dict[new_key].shape:
                 new_state_dict[new_key] = v
-                print(f"Remapped key '{k}' to '{new_key}'")
+                logger.info(f"Remapped key '{k}' to '{new_key}'")
             else:
-                print(f"Shape mismatch for remapped key '{new_key}' (from '{k}')")
+                logger.warning(f"Shape mismatch for remapped key '{new_key}' (from '{k}')")
 
         elif (
             k == "positional_embedding"
@@ -64,14 +64,12 @@ def load_weights(model, checkpoint_path: str):
             ft_pe = model_ft_state_dict["patch_embedding.positional_embedding"]
 
             if v.shape[1] == ft_pe.shape[1] - 1 and v.shape[2] == ft_pe.shape[2]:
-                print(f"Interpolating positional embedding for '{k}'...")
+                logger.info(f"Interpolating positional embedding for '{k}'...")
                 new_pe = torch.zeros_like(ft_pe)
                 new_pe[:, 1:, :] = v
                 new_state_dict["patch_embedding.positional_embedding"] = new_pe
             else:
-                print(
-                    f"Cannot interpolate positional_embedding: Pretrained {v.shape} vs Model {ft_pe.shape}"
-                )
+                logger.warning( f"Cannot interpolate positional_embedding: Pretrained {v.shape} vs Model {ft_pe.shape}")
 
         elif (
             "simmim_head" in k
@@ -79,30 +77,28 @@ def load_weights(model, checkpoint_path: str):
             or k.startswith("teacher.")
             or k.startswith("center")
         ):
-            print(f"Skipping SSL-specific key: {k}")
+            logger.info(f"Skipping SSL-specific key: {k}")
 
         else:
-            print(f"Key '{k}' from checkpoint not found in the model.")
+            logger.warning(f"Key '{k}' from checkpoint not found in the model.")
 
     missing_keys, unexpected_keys = model.load_state_dict(new_state_dict, strict=False)
-    print(f"\nSuccessfully loaded weights.")
-    print(f"Missing keys in model: {missing_keys}")
-    print(
-        f"Unexpected keys in model (from checkpoint but not used): {unexpected_keys}\n"
-    )
+    logger.info(f"Successfully loaded weights.")
+    logger.warning(f"Missing keys in model: {missing_keys}")
+    logger.warning(f"Unexpected keys in model (from checkpoint but not used): {unexpected_keys}")
     return model
 
 
 def freeze_backbone(model: ViT):
     """Freezes the backbone parameters of a Vision Transformer for fine-tuning."""
-    print("Freezing model backbone...")
+    logger.info("Freezing model backbone...")
     for param in model.encoder_blocks.parameters():
         param.requires_grad = False
     for name, param in model.patch_embedding.named_parameters():
 
         if "cls_token" not in name:
             param.requires_grad = False
-    print("Backbone frozen.")
+    logger.info("Backbone frozen.")
 
 
 def build_model(config):
@@ -132,7 +128,7 @@ def build_model(config):
         config.data.img_size,
     )
 
-    print(f"Building model for mode: '{mode}'")
+    logger.info(f"Building model for mode: '{mode}'")
     model = None
 
     if mode in ["supervised", "finetune"]:
@@ -188,8 +184,7 @@ def build_model(config):
 
 def _check_loaded_model(model, config):
     """Check which parameters are frozen/trainable and verify loading."""
-    print("\n=== Checking loaded model ===")
-
+    logger.info("Checking loaded model")
     frozen = []
     trainable = []
     for name, param in model.named_parameters():
@@ -198,13 +193,13 @@ def _check_loaded_model(model, config):
         else:
             frozen.append(name)
 
-    print(f"\nTrainable parameters ({len(trainable)}):")
+    logger.info("Trainable parameters ({len(trainable)}):")
     for name in trainable:
-        print(f"[✓] {name}")
+        logger.info(f"[✓] {name}")
 
-    print(f"\nFrozen parameters ({len(frozen)}):")
+    logger.info(f"Frozen parameters ({len(frozen)}):")
     for name in frozen:
-        print(f"[-] {name}")
+        logger.info(f"[-] {name}")
 
     if config["training"]["type"].lower() == "finetune":
         pretrained_checkpoint = torch.load(
@@ -223,10 +218,9 @@ def _check_loaded_model(model, config):
                 ):
                     matched += 1
                 else:
-                    print(f"[!] Weight mismatch in: {name}")
+                    logger.warning(f"[!] Weight mismatch in: {name}")
                     mismatched += 1
 
-        print(f"\nMatched parameters from checkpoint: {matched}")
-        print(f"Mismatched parameters: {mismatched}")
-
-    print("\n=== Model check complete ===\n")
+        logger.info(f"Matched parameters from checkpoint: {matched}")
+        logger.warning(f"Mismatched parameters: {mismatched}")
+    logger.info("Model check complete")

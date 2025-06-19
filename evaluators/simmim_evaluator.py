@@ -1,7 +1,7 @@
 import os
-import cv2
 import yaml
 import torch
+import logging
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,6 +11,7 @@ from PIL import Image
 
 from vit_core.ssl.simmim import SimMIMViT
 
+logger = logging.getLogger(__name__)
 
 def load_config(config_path):
     """Loads configuration from a YAML file."""
@@ -42,7 +43,7 @@ def build_model(config):
 def load_model_for_eval(checkpoint_path, device):
     """Loads the model and config from a checkpoint."""
     if not os.path.exists(checkpoint_path):
-        print(f"Error: Checkpoint file not found at {checkpoint_path}")
+        logger.error(f"Checkpoint file not found at {checkpoint_path}")
         return None, None
 
     try:
@@ -57,14 +58,13 @@ def load_model_for_eval(checkpoint_path, device):
         model.to(device)
         model.eval()
 
-        print(f"Model loaded from {checkpoint_path}")
-        print(f" - Saved at Epoch: {checkpoint.get('epoch', 'N/A')}")
-        print(f" - Best Val Loss: {checkpoint.get('best_val_loss', 'N/A')}")
+        logger.info(f"Model loaded from {checkpoint_path}")
+        logger.info(f"Saved at Epoch: {checkpoint.get('epoch', 'N/A')}")
+        logger.info(f"Best Val Acc: {checkpoint.get('best_val_acc', 'N/A')}")
 
         return model, config
     except Exception as e:
-        print(f"Error loading checkpoint from {checkpoint_path}: {e}")
-
+        logger.error(f"Error loading checkpoint from {checkpoint_path}: {e}")
 
 def get_inference_transforms(config):
     """Gets the transforms for inference (matching validation)."""
@@ -143,7 +143,7 @@ def visualize_simmim_reconstruction(
         os.makedirs(save_dir, exist_ok=True)
         full_output_path = os.path.join(save_dir, output_filename)
         plt.savefig(full_output_path)
-        print(f"Reconstruction visualization saved to {full_output_path}")
+        logger.info(f"Reconstruction visualization saved to {full_output_path}")
 
 
 def main_test():
@@ -162,7 +162,7 @@ def main_test():
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    logger.info(f"Using device: {device}")
 
     model, config = load_model_for_eval(args.checkpoint, device)
     if model is None:

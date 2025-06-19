@@ -1,4 +1,5 @@
 import torch
+import logging 
 
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader, random_split, Subset
@@ -9,7 +10,7 @@ from .datasets import (
     STL10UnsupervisedDataset,
     STL10DINODataset,
 )
-
+logger = logging.getLogger(__name__)
 
 def _get_dataset(config, mode, transforms):
     """
@@ -104,11 +105,11 @@ def prepare_dataloaders(config, transforms, mode):
     """
     if OmegaConf.is_list(mode):
         data_loading_mode = determine_dataset_mode_from_eval_modes(mode)
-        print(f"Multiple evaluation modes detected: {mode}")
-        print(f"Using dataset mode: '{data_loading_mode}' for data loading")
+        logger.info(f"Multiple evaluation modes detected: {mode}")
+        logger.info(f"Using dataset mode: '{data_loading_mode}' for data loading")
     else:
         data_loading_mode = mode.lower()
-        print(f"Preparing dataloaders for mode: '{data_loading_mode}'")
+        logger.info(f"Preparing dataloaders for mode: '{data_loading_mode}'")
 
     train_dataset_full, val_dataset_full = _get_dataset(
         config, data_loading_mode, transforms

@@ -1,10 +1,12 @@
 import os
 import torch
+import logging
 
 from .base_trainer import BaseTrainer
 from vit_core.ssl.dino.loss import DINOLoss
 from vit_core.ssl.dino.dino_utils import DINOMomentumScheduler
 
+logger = logging.getLogger(__name__)
 
 class DINOTrainer(BaseTrainer):
     def __init__(self, *args, **kwargs):
@@ -40,7 +42,7 @@ class DINOTrainer(BaseTrainer):
                     and self.eval_mode
                     and epoch % self.eval_interval == 0
                 ):
-                    print(f"Running automatic evaluation (mode: {self.eval_mode})...")
+                    logger.info(f"Running automatic evaluation (mode: {self.eval_mode})...")
                     from evaluators.unsupervised_evaluator import (
                         run_evaluation,
                     )

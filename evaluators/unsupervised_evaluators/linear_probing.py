@@ -1,6 +1,7 @@
 import os
 import sys
 import hydra
+import logging
 
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
@@ -16,6 +17,7 @@ from data.data_builder import prepare_dataloaders
 from utils.schemas.eval_schemas import EvaluationConfig
 from utils.train_utils import get_transforms, setup_device
 
+logger = logging.getLogger(__name__)
 
 @hydra.main(config_path="../../configs", config_name="eval_config", version_base=None)
 def main(config: EvaluationConfig):
@@ -36,7 +38,7 @@ def main(config: EvaluationConfig):
     clf.fit(train_features, train_labels)
     preds = clf.predict(val_features)
     accuracy = accuracy_score(val_labels, preds)
-    print(f"Top-1 Linear Probing Accuracy: {accuracy * 100:.2f}%")
+    logger.info(f"Top-1 Linear Probing Accuracy: {accuracy * 100:.2f}%")
 
 
 if __name__ == "__main__":

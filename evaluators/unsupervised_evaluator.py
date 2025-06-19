@@ -1,6 +1,7 @@
 import os
 import torch
 import hydra
+import logging
 import pandas as pd
 
 from typing import Optional
@@ -9,8 +10,8 @@ from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
 
-from utils.model_builder import build_model
 from utils.train_utils import setup_device
+from utils.model_builder import build_model
 from data.data_builder import prepare_dataloaders
 from utils.schemas.eval_schemas import EvaluationConfig
 from .unsupervised_evaluators.evaluator_utils import (
@@ -22,6 +23,7 @@ from .unsupervised_evaluators.umap_visualization import (
     run_umap_analysis,
 )
 
+logger = logging.getLogger(__name__)
 
 def _default_transforms(img_size: int):
     from torchvision import transforms as T
@@ -54,7 +56,7 @@ def run_knn_evaluation(
     preds = knn.predict(val_features)
     accuracy = accuracy_score(val_labels, preds)
 
-    print(f"Top-1 k-NN Accuracy: {accuracy * 100:.2f}%")
+    logger.info(f"Top-1 k-NN Accuracy: {accuracy * 100:.2f}%")
 
     return {
         "method": "knn",
@@ -82,7 +84,7 @@ def run_linear_evaluation(train_features, train_labels, val_features, val_labels
     preds = clf.predict(val_features)
     accuracy = accuracy_score(val_labels, preds)
 
-    print(f"Top-1 Linear Probing Accuracy: {accuracy * 100:.2f}%")
+    logger.info(f"Top-1 Linear Probing Accuracy: {accuracy * 100:.2f}%")
 
     return {"method": "linear", "accuracy": accuracy, "predictions": preds}
 
@@ -110,9 +112,7 @@ def run_multiple_evaluations(
 
     results = {}
     for mode in eval_modes:
-        print(f"\n{'='*50}")
-        print(f"Running evaluation mode: {mode}")
-        print(f"{'='*50}")
+        logger.info(f"Running evaluation mode: {mode}")
 
         if mode == "eval_knn":
             results[mode] = run_knn_evaluation(
@@ -147,7 +147,7 @@ def run_multiple_evaluations(
             }
 
         else:
-            print(f"Warning: Unknown evaluation mode '{mode}' - skipping")
+            logger.warning(f"Unknown evaluation mode '{mode}' - skipping")
             continue
 
     return results
@@ -213,7 +213,7 @@ def save_combined_results(results, output_path: str):
 
                 f.write("\n")
 
-        print(f"Combined results saved to {output_path}")
+        logger.info(f"Combined results saved to {output_path}")
 
 
 def run_evaluation(

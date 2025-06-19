@@ -1,8 +1,10 @@
 import os
 import torch
+import logging
 
 from .base_trainer import BaseTrainer
 
+logger = logging.getLogger(__name__)
 
 class SimMIMTrainer(BaseTrainer):
     def __init__(self, *args, **kwargs):
@@ -30,7 +32,7 @@ class SimMIMTrainer(BaseTrainer):
                     and self.eval_mode
                     and epoch % self.eval_interval == 0
                 ):
-                    print(f"Running automatic evaluation (mode: {self.eval_mode})...")
+                    logger.info(f"Running automatic evaluation (mode: {self.eval_mode})...")
                     from evaluators.unsupervised_evaluator import (
                         run_evaluation,
                     )

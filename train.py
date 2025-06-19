@@ -1,12 +1,23 @@
 import os
 import hydra
 import torch
+import logging 
 
 from utils.model_builder import build_model 
 from data.data_builder import prepare_dataloaders
 from utils.schemas.training_schemas import TrainConfig
 from utils.train_utils import get_transforms, setup_device
 from utils.trainers import SupervisedTrainer, SimMIMTrainer, DINOTrainer
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("train.log")
+    ]
+)
+logger = logging.getLogger(__name__)
 
 def load_checkpoint_if_exists(config, model, device):
     """
@@ -16,9 +27,7 @@ def load_checkpoint_if_exists(config, model, device):
 
     if resume_path is None or not os.path.exists(resume_path):
         if resume_path is not None:
-            print(
-                f"Warning: Resume path {resume_path} does not exist. Starting from scratch."
-            )
+            logger.warning(f"Resume path {resume_path} does not exist. Starting from scratch.")
         return 0, float("inf")
 
     checkpoint = torch.load(resume_path, map_location=device)
@@ -27,9 +36,8 @@ def load_checkpoint_if_exists(config, model, device):
     start_epoch = checkpoint["epoch"]
     best_val_loss = checkpoint.get("best_val_loss", float("inf"))
 
-    print(f"Resuming from epoch {start_epoch + 1}")
-    print(f"Best validation loss so far: {best_val_loss}")
-
+    logger.info(f"Resuming from epoch {start_epoch + 1}.")
+    logger.info(f"Best validation loss so far: {best_val_loss}.")
     return start_epoch, best_val_loss
 
 
@@ -66,14 +74,14 @@ def get_trainer(
             checkpoint = torch.load(resume_path, map_location=device)
             if hasattr(trainer, "optimizer") and "optimizer_state_dict" in checkpoint:
                 trainer.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-                print("Loaded optimizer state from checkpoint")
+                logger.info("Loaded optimizer state from checkpoint.")
 
         trainer.start_epoch = start_epoch
         trainer.best_val_loss = best_val_loss
 
         if mode == "dino" and hasattr(trainer, "momentum_schedule"):
             current_momentum = trainer.momentum_schedule.get_momentum(start_epoch)
-            print(f"Current teacher momentum: {current_momentum:.6f}")
+            logger.info(f"Current teacher momentum: {current_momentum:.6f}")
 
     return trainer
 
@@ -87,7 +95,7 @@ def get_save_path():
 def main(config: TrainConfig):
     """Main training function."""
     mode = config["training"]["type"].lower()
-    print(f"Starting training with mode: {mode}")
+    logger.info(f"Starting training with mode: {mode}")
 
     device = setup_device()
     transforms = get_transforms(config)
@@ -110,8 +118,7 @@ def main(config: TrainConfig):
     )
     trainer.fit(config["training"]["num_epochs"])
 
-    print(f"Training completed for mode: {mode}")
-
+    logger.info(f"Training completed for mode: {mode}")
 
 if __name__ == "__main__":
     main()
