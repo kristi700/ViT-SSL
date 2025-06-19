@@ -24,9 +24,10 @@
     *   **DINO:** Self-distillation with no labels.
     *   **SimMIM:** A simple masked image modeling approach.
     *   **Supervised:** A standard supervised baseline for comparison.
-*   **Seamless Fine-tuning:** Easily load any pre-trained checkpoint and fine-tune it on a downstream classification task.
+*   **Fine-tuning:** Easily load any pre-trained checkpoint and fine-tune it on a downstream classification task.
 *   **Unified Trainer Architecture:** A modular and extensible design that simplifies adding new models, datasets, or training methods.
 *   **Transparent Logging:** Powered by `rich` for clear, color-coded, and organized console output.
+*   **Automatic Evaluation:** Each N epcohs runs, specified evaluators (KNN Classification, Linear Probing, UMAP)
 
 ## ⚙️ Installation
 
