@@ -29,7 +29,7 @@ For details on each configurability, see the [Configuration Guide](configs.md) s
 ## Other directories
 
 - `data/` – small dataset wrappers used for experiments ([data format](data.md)).
-- `scripts/` – evaluation and helper scripts. See [Evaluation Scripts](evaluation.md) for usage examples.
+- `evaluators/` – evaluation and helper scripts. See [Evaluation Scripts](evaluation/index.md) for usage examples.
 - `tests/` – PyTest unit tests for the core modules.
 - `train.py` – main entry point that loads a config and launches training.
 

@@ -10,7 +10,14 @@ nav:
   - Configuration Guide: configs.md
   - Code Structure: architecture.md
   - Data Format: data.md
-  - Evaluation Scripts: evaluation.md
+  - Evaluation Scripts:
+      - Overview: evaluation/index.md
+      - Supervised Evaluator: evaluation/supervised_evaluator.md
+      - SimMIM Evaluator: evaluation/simmim_evaluator.md
+      - Unsupervised Evaluator: evaluation/unsupervised_evaluator.md
+      - k-NN Classification: evaluation/knn_classification.md
+      - Linear Probing: evaluation/linear_probing.md
+      - UMAP Visualization: evaluation/umap_visualization.md
   - Training Methods:
       - Overview: training/index.md
       - DINO: training/dino.md
