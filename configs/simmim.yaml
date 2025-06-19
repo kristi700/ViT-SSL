@@ -5,6 +5,7 @@ defaults:
   - base@model: model
   - base@training: training
 
+  - simmim@eval: eval
   - simmim@data: data
   - simmim@model: model
   - simmim@training: training

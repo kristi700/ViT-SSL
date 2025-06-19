@@ -62,32 +62,32 @@ class SimMIMViT(nn.Module):
             return predicted_pixels, targets
 
 
-@torch.no_grad()
-def inference_forward(self, x: torch.Tensor, return_patch_features=False):
-    """
-    Clean inference forward pass for feature extraction.
+    @torch.no_grad()
+    def inference_forward(self, x: torch.Tensor, return_patch_features=False):
+        """
+        Clean inference forward pass for feature extraction.
 
-    Args:
-        x: Input image tensor [B, C, H, W]
-        return_patch_features: If True, return all patch features;
-                             If False, return global average pooled features
+        Args:
+            x: Input image tensor [B, C, H, W]
+            return_patch_features: If True, return all patch features;
+                                If False, return global average pooled features
 
-    Returns:
-        features: Either patch-level features [B, num_patches, embed_dim]
-                 or global features [B, embed_dim]
-    """
-    self.eval()
+        Returns:
+            features: Either patch-level features [B, num_patches, embed_dim]
+                    or global features [B, embed_dim]
+        """
+        self.eval()
 
-    patches = torch.permute(self.unfold(x), (0, 2, 1)).to(x.device)
-    patches = self.projection(patches)
+        patches = torch.permute(self.unfold(x), (0, 2, 1)).to(x.device)
+        patches = self.projection(patches)
 
-    encoder_input_embeddings = patches + self.positional_embedding
-    x = encoder_input_embeddings
+        encoder_input_embeddings = patches + self.positional_embedding
+        x = encoder_input_embeddings
 
-    for encoder_block in self.encoder_blocks:
-        x, _ = encoder_block(x)
+        for encoder_block in self.encoder_blocks:
+            x, _ = encoder_block(x)
 
-    if return_patch_features:
-        return x
-    else:
-        return x.mean(dim=1)
+        if return_patch_features:
+            return x
+        else:
+            return x.mean(dim=1)

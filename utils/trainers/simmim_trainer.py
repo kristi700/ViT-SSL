@@ -1,3 +1,4 @@
+import os
 import torch
 
 from .base_trainer import BaseTrainer
@@ -8,6 +9,41 @@ class SimMIMTrainer(BaseTrainer):
         super().__init__(*args, **kwargs)
         self.patch_size = self.config["model"]["patch_size"]
         self.in_channels = self.config["model"]["in_channels"]
+
+        self.eval_interval = self.config["eval"].get("interval", 0)
+        self.eval_mode = self.config["eval"].get("mode")
+
+    def fit(self, num_epochs: int):
+        """Common training loop with unsupervised validation"""
+        end_epoch = self.start_epoch + num_epochs
+
+        with self.logger:
+            for epoch in range(self.start_epoch + 1, end_epoch + 1):
+                self.current_epoch = epoch
+                train_metrics = self.train_epoch(epoch)
+                val_metrics = self.validate()
+                self._update_schedulers(epoch)
+                self._log_metrics(train_metrics, val_metrics)
+                self._save_if_best(epoch, val_metrics["Loss"])
+                if (
+                    self.eval_interval
+                    and self.eval_mode
+                    and epoch % self.eval_interval == 0
+                ):
+                    print(f"Running automatic evaluation (mode: {self.eval_mode})...")
+                    from evaluators.unsupervised_evaluator import (
+                        run_evaluation,
+                    )
+
+                    self.logger.pause()
+                    run_evaluation(
+                        self.config,
+                        self.model,
+                        self.device,
+                        os.path.join(self.save_path, f"epoch_{epoch}"),
+                    )
+                    self.logger.resume()
+        self._vizualize()
 
     def train_epoch(
         self,

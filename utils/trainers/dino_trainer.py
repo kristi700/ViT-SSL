@@ -24,7 +24,7 @@ class DINOTrainer(BaseTrainer):
         )
 
     def fit(self, num_epochs: int):
-        """Common training loop"""
+        """Common training loop with unsupervised validation"""
         end_epoch = self.start_epoch + num_epochs
 
         with self.logger:
