@@ -1,11 +1,11 @@
-# 🧐 `supervised_evaluator.py`
+# 📏 `supervised_dataset_evaluator.py`
 
-Runs inference for a **supervised ViT classifier** on a single image and overlays the final attention map of the `[CLS]` token. Useful for quickly inspecting what the model focuses on.
+Evaluates a trained supervised ViT on an entire dataset. The script loads the configuration stored inside the checkpoint, builds the dataloader and reports classification metrics.
 
 ## Usage
 
 ```bash
-python scripts/supervised_evaluator.py --checkpoint path/to/supervised.pth --image path/to/image.jpg
+python evaluators/supervised_dataset_evaluator.py checkpoint=path/to/model.pth
 ```
 
-The script prints basic checkpoint info and saves `attention_visualization.png` in the current directory.
+Predictions and the computed Top‑1 accuracy are written to `evaluation_results.json` and `predictions.csv` in the current directory. Pass `eval.confusion_matrix=true` in the Hydra command to additionally store a confusion matrix.

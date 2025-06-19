@@ -14,11 +14,11 @@ from utils.train_utils import setup_device
 from utils.model_builder import build_model
 from data.data_builder import prepare_dataloaders
 from utils.schemas.eval_schemas import EvaluationConfig
-from .unsupervised_evaluators.evaluator_utils import (
+from evaluators.unsupervised_evaluators.evaluator_utils import (
     extract_features,
     merge_with_experiment_config,
 )
-from .unsupervised_evaluators.umap_visualization import (
+from evaluators.unsupervised_evaluators.umap_visualization import (
     prepare_combined_features,
     run_umap_analysis,
 )
@@ -255,7 +255,7 @@ def run_evaluation(
     save_combined_results(results, config["eval"].get("experiment_path", save_path))
 
 
-@hydra.main(config_path="../../configs", config_name="eval_config", version_base=None)
+@hydra.main(config_path="../configs", config_name="eval_config", version_base=None)
 def main(cfg: EvaluationConfig):
     run_evaluation(cfg)
 
