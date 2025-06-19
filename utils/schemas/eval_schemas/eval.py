@@ -1,3 +1,4 @@
+from typing import List
 from dataclasses import dataclass
 
 
@@ -7,5 +8,5 @@ class EvalConfig:
     data_dir: str
     data_csv: str
     num_classes: int
-    mode: str
+    mode: List[str]
     experiment_path: str
