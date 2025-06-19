@@ -1,12 +1,13 @@
-from typing import List
+from typing import List, Optional
 from dataclasses import dataclass
 
 
 @dataclass
 class EvalConfig:
-    dataset_name: str
-    data_dir: str
-    data_csv: str
-    num_classes: int
-    mode: List[str]
+    dataset_name: Optional[str]
+    data_dir: Optional[str]
+    data_csv: Optional[str]
+    num_classes: Optional[int]
+    mode: Optional[List[str]]
+    save_confusion_matrix: Optional[bool]
     interval: int

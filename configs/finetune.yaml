@@ -5,6 +5,7 @@ defaults:
   - base@model: model
   - base@training: training
 
+  - finetune@eval: eval
   - finetune@data: data
   - finetune@model: model
   - finetune@training: training

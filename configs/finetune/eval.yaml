@@ -1,4 +1,4 @@
-experiment_path: 'experiments/supervised/2025-06-19_08_33_14'
+interval: 10
 
 dataset_name: 'stl10'
 data_csv: 'training_data/stl10/train_labels.json'

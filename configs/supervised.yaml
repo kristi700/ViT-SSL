@@ -5,6 +5,7 @@ defaults:
   - base@model: model
   - base@training: training
 
+  - supervised@eval: eval
   - supervised@data: data
   - supervised@model: model
   - supervised@training: training

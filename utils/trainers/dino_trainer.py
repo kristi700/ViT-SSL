@@ -16,8 +16,6 @@ class DINOTrainer(BaseTrainer):
             self.config.training.teacher_momentum_final,
             self.num_epochs,
         )
-
-        self.eval_interval = self.config["eval"].get("interval", 0)
         self.eval_mode = self.config["eval"].get("mode")
 
     def create_criterion(self):

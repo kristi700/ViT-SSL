@@ -22,7 +22,8 @@ class BaseTrainer(ABC):
         self.save_path = save_path
         self.warmup_epochs = config["training"]["warmup_epochs"]
         self.num_epochs = self.config["training"]["num_epochs"]
-
+        self.eval_interval = self.config["eval"].get("interval", 0)
+        
         self.criterion = self.create_criterion()
         self.optimizer = make_optimizer(config, model)
         self.schedulers = make_schedulers(

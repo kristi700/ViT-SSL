@@ -17,11 +17,21 @@ def _get_dataset(config, mode, transforms):
     Internal helper to instantiate the correct dataset.
     """
 
-    data_cfg = config.get("eval", config.get("data", config))
-    dataset_name = data_cfg.dataset_name.lower()
-    data_dir = data_cfg.data_dir
+    dataset_name = (
+        config.get("eval", {})
+        .get("dataset_name", config.get("data", {}).get("dataset_name"))
+        .lower()
+    )
 
-    data_csv = config.get("eval", {}).get("data_csv", data_cfg.get("data_csv"))
+    data_dir = (
+        config.get("eval", {})
+        .get("data_dir", config.get("data", {}).get("data_dir"))
+    )
+
+    data_csv = (
+        config.get("eval", {})
+        .get("data_csv", config.get("data", {}).get("data_csv"))
+    )
 
     if mode in ["supervised", "finetune", "eval_knn", "eval_linear", "eval_umap"]:
         if dataset_name == "cifar10":

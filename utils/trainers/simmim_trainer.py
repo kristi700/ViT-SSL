@@ -11,8 +11,6 @@ class SimMIMTrainer(BaseTrainer):
         super().__init__(*args, **kwargs)
         self.patch_size = self.config["model"]["patch_size"]
         self.in_channels = self.config["model"]["in_channels"]
-
-        self.eval_interval = self.config["eval"].get("interval", 0)
         self.eval_mode = self.config["eval"].get("mode")
 
     def fit(self, num_epochs: int):
