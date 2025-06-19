@@ -49,11 +49,11 @@ def get_trainer(
         trainer = SupervisedTrainer(
             model, save_path, config, train_loader, val_loader, device
         )
-    elif mode == "unsupervised":
+    elif mode == "simmim":
         trainer = SimMIMTrainer(
             model, save_path, config, train_loader, val_loader, device
         )
-    elif mode == "dino_unsupervised":
+    elif mode == "dino":
         trainer = DINOTrainer(
             model, save_path, config, train_loader, val_loader, device
         )
@@ -71,7 +71,7 @@ def get_trainer(
         trainer.start_epoch = start_epoch
         trainer.best_val_loss = best_val_loss
 
-        if mode == "dino_unsupervised" and hasattr(trainer, "momentum_schedule"):
+        if mode == "dino" and hasattr(trainer, "momentum_schedule"):
             current_momentum = trainer.momentum_schedule.get_momentum(start_epoch)
             print(f"Current teacher momentum: {current_momentum:.6f}")
 

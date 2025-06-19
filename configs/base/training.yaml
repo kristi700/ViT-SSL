@@ -1,4 +1,4 @@
-type: '' # supervised, unsupervised, dino_unsupervised, finetune
+type: '' # supervised, unsupervised, dino, finetune
 random_seed: 42
 batch_size: 128
 num_epochs: 130

@@ -146,7 +146,7 @@ def build_model(config):
             mlp_dim=config.model.mlp_dim,
             dropout=config.model.dropout,
         )
-    elif mode == "unsupervised":
+    elif mode == "simmim":
         model = SimMIMViT(
             input_shape=image_shape,
             patch_size=config.model.patch_size,
@@ -157,7 +157,7 @@ def build_model(config):
             dropout=config.model.dropout,
             mask_ratio=config.model.mask_ratio,
         )
-    elif mode in ["dino_unsupervised", "eval_dino"]:
+    elif mode in ["dino", "eval_dino"]:
         model = DINOViT(
             input_shape=image_shape,
             patch_size=config.model.patch_size,
