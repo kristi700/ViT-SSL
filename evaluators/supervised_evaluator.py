@@ -7,7 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from omegaconf import OmegaConf
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional
 from sklearn.metrics import confusion_matrix
 
 from utils.metrics import Accuracy

@@ -11,6 +11,14 @@ from PIL import Image
 
 from vit_core.ssl.simmim import SimMIMViT
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("train.log")
+    ]
+)
 logger = logging.getLogger(__name__)
 
 def load_config(config_path):

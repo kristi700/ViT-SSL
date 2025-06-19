@@ -12,6 +12,14 @@ from PIL import Image
 
 from vit_core.vit import ViT
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("train.log")
+    ]
+)
 logger = logging.getLogger(__name__)
 
 # NOTE - for CIFAR10
