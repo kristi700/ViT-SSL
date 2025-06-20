@@ -16,22 +16,18 @@ def _get_dataset(config, mode, transforms):
     """
     Internal helper to instantiate the correct dataset.
     """
+    config_section = config.get("eval", {}) if "eval" in mode else config.get("data", {})
 
-    dataset_name = (
-        config.get("eval", {})
-        .get("dataset_name", config.get("data", {}).get("dataset_name"))
-        .lower()
+    dataset_name = config_section.get(
+        "dataset_name", config.get("data", {}).get("dataset_name", "")
+    ).lower()
+    data_dir = config_section.get(
+        "data_dir", config.get("data", {}).get("data_dir")
+    )
+    data_csv = config_section.get(
+        "data_csv", config.get("data", {}).get("data_csv")
     )
 
-    data_dir = (
-        config.get("eval", {})
-        .get("data_dir", config.get("data", {}).get("data_dir"))
-    )
-
-    data_csv = (
-        config.get("eval", {})
-        .get("data_csv", config.get("data", {}).get("data_csv"))
-    )
 
     if mode in ["supervised", "finetune", "eval_knn", "eval_linear", "eval_umap"]:
         if dataset_name == "cifar10":
@@ -70,33 +66,6 @@ def _get_dataset(config, mode, transforms):
         raise ValueError(f"Unknown mode for dataset creation: {mode}")
 
 
-def determine_dataset_mode_from_eval_modes(eval_modes):
-    """
-    Determine the appropriate dataset mode based on evaluation modes.
-    All evaluation modes use supervised/labeled datasets.
-
-    Args:
-        eval_modes (str or list): Single mode or list of evaluation modes
-
-    Returns:
-        str: The dataset mode to use for data loading
-    """
-    if isinstance(eval_modes, str):
-        eval_modes = [eval_modes]
-
-    supervised_modes = {
-        "eval_knn",
-        "eval_linear",
-        "eval_umap",
-        "supervised",
-        "finetune",
-    }
-
-    if any(mode in supervised_modes for mode in eval_modes):
-        return "supervised"
-
-    return eval_modes[0] if eval_modes else "supervised"
-
 
 def prepare_dataloaders(config, transforms, mode):
     """
@@ -114,7 +83,7 @@ def prepare_dataloaders(config, transforms, mode):
         tuple: (train_loader, val_loader)
     """
     if OmegaConf.is_list(mode):
-        data_loading_mode = determine_dataset_mode_from_eval_modes(mode)
+        data_loading_mode = mode[0]
         logger.info(f"Multiple evaluation modes detected: {mode}")
         logger.info(f"Using dataset mode: '{data_loading_mode}' for data loading")
     else:
