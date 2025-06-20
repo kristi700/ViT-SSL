@@ -89,9 +89,10 @@ def get_trainer(
 
 def get_save_path(config: TrainConfig):
     """Get the save path from Hydra configuration."""
-    resume_path = os.path.dirname(config['training'].get('resume_from_checkpoint'))
+    resume_model = config['training'].get('resume_from_checkpoint', None)
     hydra_output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
-    if resume_path is not None:
+    if resume_model is not None:
+        resume_path=os.path.dirname(resume_model)
         assert os.path.exists(resume_path), f"resume_from_checkpoint: {resume_path} does not exist!"
         shutil.rmtree(hydra_output_dir, ignore_errors=True)
 

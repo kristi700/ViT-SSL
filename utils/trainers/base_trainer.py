@@ -95,7 +95,7 @@ class BaseTrainer(ABC):
                 "best_val_loss": best_val_loss,
                 "config": self.config,
             }
-            os.makedirs(os.path.dirname(self.save_path), exist_ok=True)
+            os.makedirs(self.save_path, exist_ok=True)
             torch.save(checkpoint, os.path.join(self.save_path, "best_model.pth"))
 
     def _vizualize(self):
