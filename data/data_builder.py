@@ -128,6 +128,8 @@ def prepare_dataloaders(config, transforms, mode):
         shuffle=True,
         num_workers=num_workers,
         pin_memory=True,
+        persistent_workers=True,
+        prefetch_factor=2
     )
 
     val_loader = None
@@ -138,6 +140,8 @@ def prepare_dataloaders(config, transforms, mode):
             shuffle=False,
             num_workers=num_workers,
             pin_memory=True,
+            persistent_workers=True,
+            prefetch_factor=2
         )
 
     return train_loader, val_loader
