@@ -5,8 +5,5 @@ teacher_momentum_start: 0.996
 teacher_momentum_final: 1
 num_all_views: 6
 num_global_views: 2
-num_epochs: 60
-warmup_initial_learning_rate: 1e-6
-warmup_final_learning_rate: 1e-3
-batch_size: 24
-resume_from_checkpoint: 'experiments/dino/2025-06-12_13_46_05/best_model.pth'
+num_epochs: 100
+batch_size: 128
