@@ -1,13 +1,49 @@
+import os
 import torch
+import logging
 
 from .base_trainer import BaseTrainer
 
+logger = logging.getLogger(__name__)
 
 class SimMIMTrainer(BaseTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.patch_size = self.config["model"]["patch_size"]
         self.in_channels = self.config["model"]["in_channels"]
+        self.eval_mode = self.config["eval"].get("mode")
+
+    def fit(self, num_epochs: int):
+        """Common training loop with unsupervised validation"""
+        end_epoch = self.start_epoch + num_epochs
+
+        with self.train_logger:
+            for epoch in range(self.start_epoch + 1, end_epoch + 1):
+                self.current_epoch = epoch
+                train_metrics = self.train_epoch(epoch)
+                val_metrics = self.validate()
+                self._update_schedulers(epoch)
+                self._log_metrics(train_metrics, val_metrics)
+                self._save_if_best(epoch, val_metrics["Loss"])
+                if (
+                    self.eval_interval
+                    and self.eval_mode
+                    and epoch % self.eval_interval == 0
+                ):
+                    logger.info(f"Running automatic evaluation (mode: {self.eval_mode})...")
+                    from evaluators.unsupervised_evaluator import (
+                        run_evaluation,
+                    )
+
+                    self.train_logger.pause()
+                    run_evaluation(
+                        self.config,
+                        self.model,
+                        self.device,
+                        os.path.join(self.save_path, f"epoch_{epoch}"),
+                    )
+                    self.train_logger.resume()
+        self._vizualize()
 
     def train_epoch(
         self,
@@ -44,7 +80,7 @@ class SimMIMTrainer(BaseTrainer):
             )
             all_pred_patches.append(preds_patches)
             all_target_patches.append(targets_patches)
-            self.logger.train_log_step(epoch, idx)
+            self.train_logger.train_log_step(epoch, idx)
 
         metrics = self.metric_handler.calculate_metrics(
             preds_patches=torch.cat(all_pred_patches, dim=0),
@@ -78,7 +114,7 @@ class SimMIMTrainer(BaseTrainer):
                 )
                 all_pred_patches.append(preds_patches)
                 all_target_patches.append(targets_patches)
-                self.logger.val_log_step(idx)
+                self.train_logger.val_log_step(idx)
 
         metrics = self.metric_handler.calculate_metrics(
             preds_patches=torch.cat(all_pred_patches, dim=0),

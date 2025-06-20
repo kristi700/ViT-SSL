@@ -10,3 +10,7 @@ opencv-python
 pytest
 matplotlib
 hydra-core
+scikit-learn
+umap-learn
+seaborn
+pillow

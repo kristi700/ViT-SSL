@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import List
+from .eval import EvalConfig
 from .data import DataConfig
 from .model import ModelConfig
 from .training import TrainingConfig
@@ -31,13 +32,14 @@ class TransformsConfig:
 
 
 @dataclass
-class Config:
-    model: ModelConfig
+class TrainConfig:
+    eval: EvalConfig
     data: DataConfig
+    model: ModelConfig
     training: TrainingConfig
     transforms: TransformsConfig
     metrics: List[MetricName] = field(default_factory=list)
 
 
 cs = ConfigStore.instance()
-cs.store(name="config_schema", node=Config)
+cs.store(name="training_config", node=TrainConfig)

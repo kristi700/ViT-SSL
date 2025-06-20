@@ -131,3 +131,19 @@ class DINOViT(nn.Module):
             param_teacher_h.data.mul_(teacher_momentum).add_(
                 (1 - teacher_momentum) * param_student_h.detach().data
             )
+
+    @torch.no_grad()
+    def inference_forward(self, x: torch.Tensor, return_features=False):
+        """
+        Clean inference forward pass using teacher backbone.
+
+        """
+        self.eval()
+
+        features = self.teacher_backbone(x)
+
+        if return_features:
+            return features
+
+        output = self.teacher_head(features)
+        return output

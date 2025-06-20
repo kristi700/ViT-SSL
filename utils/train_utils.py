@@ -1,8 +1,19 @@
+import torch
+import logging
+
 from torch import nn, optim
 from torch.optim import lr_scheduler
 from torchvision import transforms as T
 
 from .schedulers import LinearWarmupScheduler
+
+logger = logging.getLogger(__name__)
+
+def setup_device():
+    """Setup and return the appropriate device (CUDA/CPU)."""
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logger.info(f"Using device: {device}")
+    return device
 
 
 def make_criterion(config):

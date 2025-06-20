@@ -1,6 +1,7 @@
 import os
 import math
 import torch
+import logging
 
 from abc import ABC, abstractmethod
 
@@ -9,6 +10,7 @@ from utils.metrics import MetricHandler
 from utils.history import TrainingHistory
 from utils.train_utils import make_optimizer, make_schedulers, make_criterion
 
+logger = logging.getLogger(__name__)
 
 class BaseTrainer(ABC):
     def __init__(self, model, save_path: str, config, train_loader, val_loader, device):
@@ -20,7 +22,8 @@ class BaseTrainer(ABC):
         self.save_path = save_path
         self.warmup_epochs = config["training"]["warmup_epochs"]
         self.num_epochs = self.config["training"]["num_epochs"]
-
+        self.eval_interval = self.config["eval"].get("interval", 0)
+        
         self.criterion = self.create_criterion()
         self.optimizer = make_optimizer(config, model)
         self.schedulers = make_schedulers(
@@ -30,7 +33,7 @@ class BaseTrainer(ABC):
             self.warmup_epochs * len(train_loader),
         )
         self.metric_handler = MetricHandler(config)
-        self.logger = Logger(
+        self.train_logger = Logger(
             self.metric_handler.metric_names,
             len(train_loader),
             len(val_loader),
@@ -60,7 +63,7 @@ class BaseTrainer(ABC):
         """Common training loop"""
         end_epoch = self.start_epoch + num_epochs
 
-        with self.logger:
+        with self.train_logger:
             for epoch in range(self.start_epoch + 1, end_epoch + 1):
                 self.current_epoch = epoch
                 train_metrics = self.train_epoch(epoch)
@@ -77,14 +80,14 @@ class BaseTrainer(ABC):
 
     def _log_metrics(self, train_metrics, val_metrics):
         """Common logging logic"""
-        self.logger.log_train_epoch(**train_metrics)
-        self.logger.log_val_epoch(**val_metrics)
+        self.train_logger.log_train_epoch(**train_metrics)
+        self.train_logger.log_val_epoch(**val_metrics)
 
     def _save_if_best(self, epoch, val_loss):
         """Common checkpointing logic"""
-        if self.best_val_loss > val_loss:
+        if self.best_val_loss >= val_loss:
             best_val_loss = val_loss
-            print(f"New best validation loss: {best_val_loss:.4f}. Saving model...")
+            logger.info(f"New best validation loss: {best_val_loss:.4f}. Saving model...")
             checkpoint = {
                 "epoch": epoch,
                 "model_state_dict": self.model.state_dict(),

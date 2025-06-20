@@ -1,4 +1,4 @@
-type: 'unsupervised'
+type: 'simmim'
 criterion:
   name: L1Loss
   params:

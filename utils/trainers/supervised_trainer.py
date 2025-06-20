@@ -1,10 +1,12 @@
 import os
 import math
 import torch
+import logging
 
 from .base_trainer import BaseTrainer
 from utils.train_utils import make_optimizer
 
+logger = logging.getLogger(__name__)
 
 class SupervisedTrainer(BaseTrainer):
     def __init__(self, *args, **kwargs):
@@ -37,7 +39,7 @@ class SupervisedTrainer(BaseTrainer):
             running_loss += loss.item() * inputs.size(0)
             correct += (preds.argmax(1) == labels).sum().item()
             total += labels.size(0)
-            self.logger.train_log_step(epoch, idx)
+            self.train_logger.train_log_step(epoch, idx)
 
         metrics = self.metric_handler.calculate_metrics(correct=correct, total=total)
         metrics["Loss"] = running_loss / total
@@ -45,36 +47,60 @@ class SupervisedTrainer(BaseTrainer):
 
     def validate(self):
         self.model.eval()
+        all_preds, all_labels = [], []
         running_loss, total, correct = 0, 0, 0
-
+        
         with torch.no_grad():
             for idx, (inputs, labels) in enumerate(self.val_loader):
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
-                preds = self.model(inputs)
-                loss = self.criterion(preds, labels)
+                logits = self.model(inputs)
+                loss = self.criterion(logits, labels)
                 running_loss += loss.item() * inputs.size(0)
-                correct += (preds.argmax(1) == labels).sum().item()
+                correct += (logits.argmax(1) == labels).sum().item()
                 total += labels.size(0)
-                self.logger.val_log_step(idx)
+                self.train_logger.val_log_step(idx)
+                all_preds.append(logits.argmax(dim=1).cpu())
+                all_labels.append(labels.cpu())
 
         metrics = self.metric_handler.calculate_metrics(correct=correct, total=total)
         metrics["Loss"] = running_loss / total
-        return metrics
+        return metrics, torch.cat(all_preds), torch.cat(all_labels)
 
     def fit(self, num_epochs: int):
         end_epoch = self.start_epoch + num_epochs
 
-        with self.logger:
+        with self.train_logger:
             for epoch in range(self.start_epoch + 1, end_epoch + 1):
                 self.current_epoch = epoch
                 if self.freeze_backbone and epoch == self.freeze_backbone_epochs:
                     self._unfreeze_backbone()
                     self.optimizer = make_optimizer(self.config, self.model)
                 train_metrics = self.train_epoch(epoch)
-                val_metrics = self.validate()
+                val_metrics, preds, labels = self.validate()
                 self._update_schedulers(epoch)
                 self._log_metrics(train_metrics, val_metrics)
                 self._save_if_best(epoch, val_metrics["Accuracy"])
+                if (
+                    self.eval_interval
+                    and epoch % self.eval_interval == 0
+                ):
+                    logger.info(f"Running automatic evaluation...")
+                    from evaluators.supervised_evaluator import (
+                        run_evaluation,
+                    )
+
+                    self.train_logger.pause()
+                    run_evaluation(
+                        self.config,
+                        self.model,
+                        self.device,
+                        os.path.join(self.save_path, f"epoch_{epoch}"),
+                        val_metrics["Accuracy"],
+                        preds,
+                        labels
+
+                    )
+                    self.train_logger.resume()
         self._vizualize()
 
     def _unfreeze_backbone(self):
@@ -86,7 +112,7 @@ class SupervisedTrainer(BaseTrainer):
     def _save_if_best(self, epoch: int, val_accuracy: float):
         if val_accuracy > self.best_val_acc:
             best_val_acc = val_accuracy
-            print(f"New best validation accuracy: {best_val_acc:.4f}. Saving model...")
+            logger.info(f"New best validation accuracy: {best_val_acc:.4f}. Saving model...")
             checkpoint = {
                 "epoch": epoch,
                 "model_state_dict": self.model.state_dict(),

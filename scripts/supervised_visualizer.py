@@ -2,6 +2,7 @@ import os
 import cv2
 import yaml
 import torch
+import logging
 import argparse
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
@@ -10,6 +11,16 @@ import torchvision.transforms as T
 from PIL import Image
 
 from vit_core.vit import ViT
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("train.log")
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # NOTE - for CIFAR10
 IDX_TO_CLASS = {
@@ -56,7 +67,7 @@ def build_model(config):
 def load_model_for_eval(checkpoint_path, device):
     """Loads the model and config from a checkpoint."""
     if not os.path.exists(checkpoint_path):
-        print(f"Error: Checkpoint file not found at {checkpoint_path}")
+        logger.error(f"Checkpoint file not found at {checkpoint_path}")
         return None, None
 
     try:
@@ -71,13 +82,12 @@ def load_model_for_eval(checkpoint_path, device):
         model.to(device)
         model.eval()
 
-        print(f"Model loaded from {checkpoint_path}")
-        print(f" - Saved at Epoch: {checkpoint.get('epoch', 'N/A')}")
-        print(f" - Best Val Acc: {checkpoint.get('best_val_acc', 'N/A')}")
-
+        logger.info(f"Model loaded from {checkpoint_path}")
+        logger.info(f"Saved at Epoch: {checkpoint.get('epoch', 'N/A')}")
+        logger.info(f"Best Val Acc: {checkpoint.get('best_val_acc', 'N/A')}")
         return model, config
     except Exception as e:
-        print(f"Error loading checkpoint from {checkpoint_path}: {e}")
+        logger.error(f"Error loading checkpoint from {checkpoint_path}: {e}")
 
 
 def get_inference_transforms(config):
@@ -95,7 +105,7 @@ def get_inference_transforms(config):
 def process_attention(attention_probs, image_size_hw, patch_size):
     """Processes attention probabilities for visualization."""
     if attention_probs is None:
-        print("Warning: No attention probabilities found.")
+        logger.warning(f"No attention probabilities found.")
         return None
 
     cls_attn = attention_probs[0, :, 0, 1:]
@@ -168,7 +178,7 @@ def main_test():
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    logger.info(f"Using device: {device}")
 
     model, config = load_model_for_eval(args.checkpoint, device)
     if model is None:

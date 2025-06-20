@@ -1,0 +1,9 @@
+defaults:
+  - unsupervised_eval@eval: eval
+  - unsupervised_eval@eval.transforms.train: transforms
+  - unsupervised_eval@eval.transforms.val: transforms
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

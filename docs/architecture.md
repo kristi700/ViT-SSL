@@ -16,6 +16,7 @@ Core implementation of the Vision Transformer (ViT) and self-supervised variants
 ## `utils`
 Utilities used throughout training and evaluation.
 
+- `scripts/` – Visualization scripts for supervisely trained models and SimMIM. 
 - `trainers/` – training loops for Supervised, DINO and SimMIM methods.
 - `logger.py` – colored logging based on the `rich` library.
 - `metrics.py` – common evaluation metrics.
@@ -29,7 +30,7 @@ For details on each configurability, see the [Configuration Guide](configs.md) s
 ## Other directories
 
 - `data/` – small dataset wrappers used for experiments ([data format](data.md)).
-- `scripts/` – evaluation and helper scripts. See [Evaluation Scripts](evaluation.md) for usage examples.
+- `evaluators/` – evaluation and helper scripts. See [Evaluation Scripts](evaluation/index.md) for usage examples.
 - `tests/` – PyTest unit tests for the core modules.
 - `train.py` – main entry point that loads a config and launches training.
 

@@ -1,9 +1,12 @@
+import os
 import torch
+import logging
 
 from .base_trainer import BaseTrainer
 from vit_core.ssl.dino.loss import DINOLoss
 from vit_core.ssl.dino.dino_utils import DINOMomentumScheduler
 
+logger = logging.getLogger(__name__)
 
 class DINOTrainer(BaseTrainer):
     def __init__(self, *args, **kwargs):
@@ -13,11 +16,44 @@ class DINOTrainer(BaseTrainer):
             self.config.training.teacher_momentum_final,
             self.num_epochs,
         )
+        self.eval_mode = self.config["eval"].get("mode")
 
     def create_criterion(self):
         return DINOLoss(
             self.config.training.teacher_temp, self.config.training.student_temp
         )
+
+    def fit(self, num_epochs: int):
+        """Common training loop with unsupervised validation"""
+        end_epoch = self.start_epoch + num_epochs
+
+        with self.train_logger:
+            for epoch in range(self.start_epoch + 1, end_epoch + 1):
+                self.current_epoch = epoch
+                train_metrics = self.train_epoch(epoch)
+                val_metrics = self.validate()
+                self._update_schedulers(epoch)
+                self._log_metrics(train_metrics, val_metrics)
+                self._save_if_best(epoch, val_metrics["Loss"])
+                if (
+                    self.eval_interval
+                    and self.eval_mode
+                    and epoch % self.eval_interval == 0
+                ):
+                    logger.info(f"Running automatic evaluation (mode: {self.eval_mode})...")
+                    from evaluators.unsupervised_evaluator import (
+                        run_evaluation,
+                    )
+
+                    self.train_logger.pause()
+                    run_evaluation(
+                        self.config,
+                        self.model,
+                        self.device,
+                        os.path.join(self.save_path, f"epoch_{epoch}"),
+                    )
+                    self.train_logger.resume()
+        self._vizualize()
 
     def train_epoch(
         self,
@@ -57,7 +93,7 @@ class DINOTrainer(BaseTrainer):
             running_loss += loss.item()
             total += 1
 
-            self.logger.train_log_step(epoch, idx)
+            self.train_logger.train_log_step(epoch, idx)
 
         metrics = self.metric_handler.calculate_metrics(
             center=self.model.center,
@@ -93,7 +129,7 @@ class DINOTrainer(BaseTrainer):
                 loss = self.criterion(teacher_output, student_output, self.model.center)
                 running_loss += loss.item()
                 total += 1
-                self.logger.val_log_step(idx)
+                self.train_logger.val_log_step(idx)
 
         metrics = self.metric_handler.calculate_metrics(
             center=self.model.center,
