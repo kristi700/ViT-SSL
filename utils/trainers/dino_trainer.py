@@ -2,6 +2,8 @@ import os
 import torch
 import logging
 
+from torch.cuda.amp import autocast
+
 from .base_trainer import BaseTrainer
 from vit_core.ssl.dino.loss import DINOLoss
 from vit_core.ssl.dino.dino_utils import DINOMomentumScheduler
@@ -70,22 +72,25 @@ class DINOTrainer(BaseTrainer):
             inputs = [x.to(self.device) for x in inputs]
 
             self.optimizer.zero_grad()
-            teacher_output, student_output = self.model(inputs, num_global_views)
+            with autocast():
+                teacher_output, student_output = self.model(inputs, num_global_views)
 
-            teacher_output = teacher_output.view(
-                num_global_views,
-                int(teacher_output.shape[0] / num_global_views),
-                teacher_output.shape[1],
-            )
-            student_output = student_output.view(
-                len(inputs),
-                int(student_output.shape[0] / len(inputs)),
-                student_output.shape[1],
-            )
+                teacher_output = teacher_output.view(
+                    num_global_views,
+                    int(teacher_output.shape[0] / num_global_views),
+                    teacher_output.shape[1],
+                )
+                student_output = student_output.view(
+                    len(inputs),
+                    int(student_output.shape[0] / len(inputs)),
+                    student_output.shape[1],
+                )
+                loss = self.criterion(teacher_output, student_output, self.model.center)
+            
+            self.scaler.scale(loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
 
-            loss = self.criterion(teacher_output, student_output, self.model.center)
-            loss.backward()
-            self.optimizer.step()
             self.model.momentum_update_teacher(current_teach_momentum)
             if self.schedulers["warmup"] is not None and epoch <= self.warmup_epochs:
                 self.schedulers["warmup"].step()
@@ -113,20 +118,21 @@ class DINOTrainer(BaseTrainer):
         with torch.no_grad():
             for idx, inputs in enumerate(self.val_loader):
                 inputs = [x.to(self.device) for x in inputs]
-                teacher_output, student_output = self.model(inputs, num_global_views)
+                with autocast():
+                    teacher_output, student_output = self.model(inputs, num_global_views)
 
-                teacher_output = teacher_output.view(
-                    num_global_views,
-                    int(teacher_output.shape[0] / num_global_views),
-                    teacher_output.shape[1],
-                )
-                student_output = student_output.view(
-                    len(inputs),
-                    int(student_output.shape[0] / len(inputs)),
-                    student_output.shape[1],
-                )
+                    teacher_output = teacher_output.view(
+                        num_global_views,
+                        int(teacher_output.shape[0] / num_global_views),
+                        teacher_output.shape[1],
+                    )
+                    student_output = student_output.view(
+                        len(inputs),
+                        int(student_output.shape[0] / len(inputs)),
+                        student_output.shape[1],
+                    )
+                    loss = self.criterion(teacher_output, student_output, self.model.center)
 
-                loss = self.criterion(teacher_output, student_output, self.model.center)
                 running_loss += loss.item()
                 total += 1
                 self.train_logger.val_log_step(idx)

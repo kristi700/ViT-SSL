@@ -2,6 +2,8 @@ import os
 import torch
 import logging
 
+from torch.cuda.amp import autocast
+
 from .base_trainer import BaseTrainer
 
 logger = logging.getLogger(__name__)
@@ -55,12 +57,15 @@ class SimMIMTrainer(BaseTrainer):
 
         for idx, inputs in enumerate(self.train_loader):
             inputs = inputs.to(self.device)
-
             self.optimizer.zero_grad()
-            preds_flat, targets_flat = self.model(inputs)
-            loss = self.criterion(preds_flat, targets_flat)
-            loss.backward()
-            self.optimizer.step()
+
+            with autocast():
+                preds_flat, targets_flat = self.model(inputs)
+                loss = self.criterion(preds_flat, targets_flat)
+            
+            self.scaler.scale(loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
 
             if self.schedulers["warmup"] is not None and epoch <= self.warmup_epochs:
                 self.schedulers["warmup"].step()
@@ -97,8 +102,11 @@ class SimMIMTrainer(BaseTrainer):
         with torch.no_grad():
             for idx, inputs in enumerate(self.val_loader):
                 inputs = inputs.to(self.device)
-                preds_flat, targets_flat = self.model(inputs)
-                loss = self.criterion(preds_flat, targets_flat)
+
+                with autocast():
+                    preds_flat, targets_flat = self.model(inputs)
+                    loss = self.criterion(preds_flat, targets_flat)
+    
                 running_loss += loss.item()
                 total += 1
 

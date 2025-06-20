@@ -4,6 +4,7 @@ import torch
 import logging
 
 from abc import ABC, abstractmethod
+from torch.cuda.amp import GradScaler
 
 from utils.logger import Logger
 from utils.metrics import MetricHandler
@@ -40,6 +41,7 @@ class BaseTrainer(ABC):
             self.num_epochs + 1,
         )
         self.history = TrainingHistory()
+        self.scaler = GradScaler()
 
         self.best_val_loss = math.inf
         self.current_epoch = 0

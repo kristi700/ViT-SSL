@@ -3,6 +3,8 @@ import math
 import torch
 import logging
 
+from torch.cuda.amp import autocast
+
 from .base_trainer import BaseTrainer
 from utils.train_utils import make_optimizer
 
@@ -28,10 +30,13 @@ class SupervisedTrainer(BaseTrainer):
             inputs, labels = inputs.to(self.device), labels.to(self.device)
 
             self.optimizer.zero_grad()
-            preds = self.model(inputs)
-            loss = self.criterion(preds, labels)
-            loss.backward()
-            self.optimizer.step()
+            with autocast():
+                preds = self.model(inputs)
+                loss = self.criterion(preds, labels)
+
+            self.scaler.scale(loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
 
             if self.schedulers["warmup"] is not None and epoch <= self.warmup_epochs:
                 self.schedulers["warmup"].step()
@@ -53,8 +58,11 @@ class SupervisedTrainer(BaseTrainer):
         with torch.no_grad():
             for idx, (inputs, labels) in enumerate(self.val_loader):
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
-                logits = self.model(inputs)
-                loss = self.criterion(logits, labels)
+
+                with autocast():
+                    logits = self.model(inputs)
+                    loss = self.criterion(logits, labels)
+
                 running_loss += loss.item() * inputs.size(0)
                 correct += (logits.argmax(1) == labels).sum().item()
                 total += labels.size(0)
