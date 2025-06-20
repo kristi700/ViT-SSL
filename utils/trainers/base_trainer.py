@@ -85,7 +85,7 @@ class BaseTrainer(ABC):
 
     def _save_if_best(self, epoch, val_loss):
         """Common checkpointing logic"""
-        if self.best_val_loss > val_loss:
+        if self.best_val_loss >= val_loss:
             best_val_loss = val_loss
             logger.info(f"New best validation loss: {best_val_loss:.4f}. Saving model...")
             checkpoint = {
@@ -95,7 +95,7 @@ class BaseTrainer(ABC):
                 "best_val_loss": best_val_loss,
                 "config": self.config,
             }
-            os.makedirs(self.save_path, exist_ok=True)
+            os.makedirs(os.path.dirname(self.save_path), exist_ok=True)
             torch.save(checkpoint, os.path.join(self.save_path, "best_model.pth"))
 
     def _vizualize(self):
