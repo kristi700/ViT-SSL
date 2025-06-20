@@ -179,7 +179,7 @@ def build_model(config):
         checkpoint_path = os.path.join(config.eval.experiment_path, "best_model.pth")
         model = load_weights(model, checkpoint_path)
 
-    return model
+    return torch.compile(model)
 
 
 def _check_loaded_model(model, config):
