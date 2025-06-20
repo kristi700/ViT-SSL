@@ -9,8 +9,10 @@
       
       
       
-        <link rel="prev" href="../supervised/">
+        <link rel="prev" href="../unsupervised_evaluator/">
       
+      
+        <link rel="next" href="../linear_probing/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -18,7 +20,7 @@
     
     
       
-        <title>Finetuning - ViT-SSL</title>
+        <title>k-NN Classification - ViT-SSL</title>
       
     
     
@@ -60,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fine-tuning-workflow" class="md-skip">
+        <a href="#knn_classificationpy" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Finetuning
+              k-NN Classification
             
           </span>
         </div>
@@ -301,20 +303,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -330,218 +332,10 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             Evaluation Scripts
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../evaluation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Overview
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../evaluation/supervised_evaluator/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Supervised Evaluator
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../evaluation/simmim_evaluator.md" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    SimMIM Evaluator
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../evaluation/unsupervised_evaluator/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Unsupervised Evaluator
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../evaluation/knn_classification/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    k-NN Classification
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../evaluation/linear_probing/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Linear Probing
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../evaluation/umap_visualization/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    UMAP Visualization
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-    
-  
-  
-  
-    
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    Training Methods
-    
-  </span>
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_6">
-            <span class="md-nav__icon md-icon"></span>
-            Training Methods
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -575,12 +369,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../dino/" class="md-nav__link">
+      <a href="../supervised_evaluator/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    DINO
+    Supervised Evaluator
     
   </span>
   
@@ -598,12 +392,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../simmim/" class="md-nav__link">
+      <a href="../simmim_evaluator.md" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    SimMIM
+    SimMIM Evaluator
     
   </span>
   
@@ -621,12 +415,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../supervised/" class="md-nav__link">
+      <a href="../unsupervised_evaluator/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Supervised
+    Unsupervised Evaluator
     
   </span>
   
@@ -653,20 +447,216 @@
         
       
       
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
   
   
   <span class="md-ellipsis">
-    Finetuning
+    k-NN Classification
     
   </span>
   
 
-          <span class="md-nav__icon md-icon"></span>
-        </label>
+      </a>
       
-      <a href="./" class="md-nav__link md-nav__link--active">
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../linear_probing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Linear Probing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../umap_visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    UMAP Visualization
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Training Methods
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Training Methods
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Overview
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../training/dino/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DINO
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../training/simmim/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    SimMIM
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../training/supervised/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Supervised
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../training/finetune/" class="md-nav__link">
         
   
   
@@ -677,53 +667,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      Overview
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#typical-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      Typical Steps
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-components" class="md-nav__link">
-    <span class="md-ellipsis">
-      Key Components
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -756,41 +699,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      Overview
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#typical-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      Typical Steps
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#key-components" class="md-nav__link">
-    <span class="md-ellipsis">
-      Key Components
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -808,60 +716,9 @@
   
 
 
-<h1 id="fine-tuning-workflow">🔧 Fine-tuning Workflow</h1>
-<p>Fine-tuning adapts a pretrained ViT model to a new dataset. The pipeline reuses the supervised trainer but loads weights from a previous run.</p>
-<hr />
-<h2 id="overview">Overview</h2>
-<ol>
-<li><strong>Select mode</strong> – set <code>training.type: "finetune"</code> in the config.</li>
-<li><strong>Load checkpoint</strong> – provide <code>training.pretrained_path</code> pointing to the saved model.</li>
-<li><strong>Freeze layers</strong> – if <code>training.freeze_backbone: true</code>, the encoder is frozen and only the head is trained.</li>
-<li><strong>Check weights</strong> – <code>load_pretrained_model()</code> matches shapes and logs any mismatches.</li>
-<li><strong>Train</strong> – <code>SupervisedTrainer</code> handles the cross‑entropy loop and logs metrics.</li>
-</ol>
-<p>The workflow allows initializing from SimMIM, DINO or any compatible checkpoint.</p>
-<hr />
-<h2 id="typical-steps">Typical Steps</h2>
-<pre><code class="language-bash"># Choose the finetune config
-python train.py training.type=finetune training.pretrained_path=/path/to/checkpoint.pth
-</code></pre>
-<p>This can be set in the config for ease of use, as explained in the <a href="configs.md">Configuration Guide</a></p>
-<p>During startup the script:</p>
-<ul>
-<li>Builds a <code>ViT</code> model with the classification head.</li>
-<li>Loads the pretrained weights using <code>load_pretrained_model()</code>.</li>
-<li>Optionally freezes backbone parameters.</li>
-<li>Runs <code>SupervisedTrainer.fit()</code> for the specified number of epochs.</li>
-</ul>
-<hr />
-<h2 id="key-components">Key Components</h2>
-<table>
-<thead>
-<tr>
-<th>Component</th>
-<th>File</th>
-<th>Role</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>load_pretrained_model</code></td>
-<td><code>train.py</code></td>
-<td>Loads weights &amp; handles shape mismatches</td>
-</tr>
-<tr>
-<td><code>freeze_backbone</code></td>
-<td><code>train.py</code></td>
-<td>Stops gradient updates for encoder blocks</td>
-</tr>
-<tr>
-<td><code>SupervisedTrainer</code></td>
-<td><code>utils/train_utils.py</code></td>
-<td>Training loop used for fine‑tuning</td>
-</tr>
-</tbody>
-</table>
-<p>Fine-tuning is thus simply supervised training initialized from a checkpoint, making it easy to adapt SSL models to downstream tasks.</p>
+<h1 id="knn_classificationpy">📊 <code>knn_classification.py</code></h1>
+<p>Performs a simple k‑NN classification on features extracted from a self-supervised model.</p>
+<p>The number of neighbours defaults to the dataset's class count. The script prints the Top‑1 accuracy and stores predictions in <code>evaluation_summary.csv</code> when run through <code>unsupervised_evaluator.py</code>.</p>
 
 
 
