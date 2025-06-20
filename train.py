@@ -1,6 +1,7 @@
 import os
 import hydra
 import torch
+import shutil
 import logging 
 
 from utils.model_builder import build_model 
@@ -86,10 +87,18 @@ def get_trainer(
     return trainer
 
 
-def get_save_path():
+def get_save_path(config: TrainConfig):
     """Get the save path from Hydra configuration."""
-    return hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
+    resume_path = config['training'].get('resume_from_checkpoint')
+    hydra_output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
 
+    if resume_path is not None:
+        assert os.path.exists(resume_path), f"resume_from_checkpoint: {resume_path} does not exist!"
+        shutil.rmtree(hydra_output_dir, ignore_errors=True)
+
+        return resume_path
+    else:
+        return hydra_output_dir
 
 @hydra.main(config_path="configs", config_name="config", version_base=None)
 def main(config: TrainConfig):
@@ -108,7 +117,7 @@ def main(config: TrainConfig):
     trainer = get_trainer(
         mode,
         model,
-        get_save_path(),
+        get_save_path(config),
         config,
         train_loader,
         val_loader,
