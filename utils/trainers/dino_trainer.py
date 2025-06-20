@@ -71,7 +71,7 @@ class DINOTrainer(BaseTrainer):
         for idx, inputs in enumerate(self.train_loader):
             inputs = [x.to(self.device) for x in inputs]
 
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=True)
             with autocast():
                 teacher_output, student_output = self.model(inputs, num_global_views)
 

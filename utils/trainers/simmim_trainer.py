@@ -57,7 +57,7 @@ class SimMIMTrainer(BaseTrainer):
 
         for idx, inputs in enumerate(self.train_loader):
             inputs = inputs.to(self.device)
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=True)
 
             with autocast():
                 preds_flat, targets_flat = self.model(inputs)

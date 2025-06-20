@@ -29,7 +29,7 @@ class SupervisedTrainer(BaseTrainer):
         for idx, (inputs, labels) in enumerate(self.train_loader):
             inputs, labels = inputs.to(self.device), labels.to(self.device)
 
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=True)
             with autocast():
                 preds = self.model(inputs)
                 loss = self.criterion(preds, labels)
