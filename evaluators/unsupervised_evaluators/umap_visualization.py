@@ -5,6 +5,7 @@ import torch
 import logging
 import numpy as np
 import pandas as pd
+from PIL import Image
 import matplotlib.pyplot as plt
 
 from umap import UMAP
@@ -373,6 +374,77 @@ def save_umap_results(metrics, quality, feedback, output_dir):
         f.write("-" * 20 + "\n")
         for fb in feedback:
             f.write(f"• {fb}\n")
+
+def create_3d_umap_animation(features, labels, output_dir, umap_params=None):
+    """Create a rotating 3D UMAP visualization saved as GIF."""
+
+    if umap_params is None:
+        umap_params = {
+            "n_components": 3,
+            "n_neighbors": 15,
+            "min_dist": 0.1,
+            "metric": "euclidean",
+            "verbose": True,
+        }
+
+    logger.info("Fitting 3D UMAP embedding...")
+    reducer = UMAP(**umap_params)
+    embedding = reducer.fit_transform(features)
+
+    frames_dir = os.path.join(output_dir, "umap_frames")
+    os.makedirs(frames_dir, exist_ok=True)
+
+    fig = plt.figure(figsize=(12, 9))
+    ax = fig.add_subplot(111, projection="3d")
+
+    frame_files = []
+    for angle in range(0, 360, 4):
+        ax.clear()
+        scatter = ax.scatter(
+            embedding[:, 0],
+            embedding[:, 1],
+            embedding[:, 2],
+            c=labels,
+            cmap="Spectral",
+            s=5,
+            alpha=0.7,
+        )
+        ax.view_init(elev=20, azim=angle)
+        ax.set_title(f"3D UMAP - Rotation {angle}°")
+        ax.set_xlabel("UMAP 1")
+        ax.set_ylabel("UMAP 2")
+        ax.set_zlabel("UMAP 3")
+        if angle == 0:
+            plt.colorbar(scatter, ax=ax, shrink=0.5, aspect=5)
+        frame_file = os.path.join(frames_dir, f"frame_{angle:03d}.png")
+        plt.savefig(frame_file, dpi=100, bbox_inches="tight")
+        frame_files.append(frame_file)
+
+    plt.close(fig)
+
+    if frame_files:
+        images = [Image.open(f) for f in frame_files if os.path.exists(f)]
+        if images:
+            gif_path = os.path.join(output_dir, "umap_3d_rotation.gif")
+            images[0].save(
+                gif_path,
+                save_all=True,
+                append_images=images[1:],
+                duration=100,
+                loop=0,
+            )
+            logger.info(f"3D UMAP animation saved to: {gif_path}")
+        for f in frame_files:
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+        try:
+            os.rmdir(frames_dir)
+        except OSError:
+            pass
+
+    return embedding
 
 
 def prepare_combined_features(train_features, train_labels, val_features, val_labels):
