@@ -112,6 +112,10 @@ def prepare_dataloaders(config, transforms, mode):
         )
         train_dataset = Subset(train_dataset_full, train_subset_indices.indices)
         val_dataset = Subset(val_dataset_full, val_subset_indices.indices)
+        if hasattr(train_dataset_full, "num_global_views"):
+            train_dataset.num_global_views = train_dataset_full.num_global_views
+        if hasattr(val_dataset_full, "num_global_views"):
+            val_dataset.num_global_views = val_dataset_full.num_global_views
     else:
 
         train_dataset = train_dataset_full

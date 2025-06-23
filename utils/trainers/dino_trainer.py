@@ -63,9 +63,7 @@ class DINOTrainer(BaseTrainer):
     ):
         self.model.train()
         total, running_loss = 0, 0
-        num_global_views = (
-            self.train_loader.dataset.dataset.num_global_views
-        )  # TODO - might not be ideal like this
+        num_global_views = self.train_loader.dataset.num_global_views
         current_teach_momentum = self.momentum_schedule.get_momentum(epoch)
 
         for idx, inputs in enumerate(self.train_loader):
@@ -111,9 +109,7 @@ class DINOTrainer(BaseTrainer):
     def validate(self):
         self.model.eval()
         total, running_loss = 0, 0
-        num_global_views = (
-            self.val_loader.dataset.dataset.num_global_views
-        )  # TODO - might not be ideal like this
+        num_global_views = self.val_loader.dataset.num_global_views
 
         with torch.no_grad():
             for idx, inputs in enumerate(self.val_loader):

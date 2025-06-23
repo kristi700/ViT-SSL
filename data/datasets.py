@@ -89,7 +89,11 @@ class STL10DINODataset(Dataset):
         self.transforms = transforms
         self.files = sorted(glob.glob(f"{root_dir}/*.png"))
         self.num_all_views = num_all_views
-        self.num_global_views = num_global_views
+        self._num_global_views = num_global_views
+
+    @property
+    def num_global_views(self) -> int:
+        return self._num_global_views
 
     def __len__(self):
         return len(self.files)
