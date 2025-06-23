@@ -62,6 +62,7 @@ def forward(multi_crop_views, num_global_views):
 
 - Highlights
     - Teacher momentum is scheduled with a cosine scheduler via DINOMomentumScheduler
+    - Teacher temperature can be scheduled (cosine or linear) with DINOTeacherTempScheduler
     - Both teacher and student outputs are reshaped per view before computing the loss
     - Centering is updated at every step as per DINO's original formulation
 

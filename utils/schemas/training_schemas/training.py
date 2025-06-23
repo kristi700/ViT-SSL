@@ -25,6 +25,8 @@ class TrainingConfig:
     type: str
     student_temp: Optional[float]
     teacher_temp: Optional[float]
+    teacher_temp_final: Optional[float] = None
+    teacher_temp_scheduler: Optional[str] = ""
     teacher_momentum_start: Optional[float]
     teacher_momentum_final: Optional[float]
     num_all_views: Optional[int]

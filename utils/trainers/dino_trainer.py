@@ -6,7 +6,7 @@ from torch.cuda.amp import autocast
 
 from .base_trainer import BaseTrainer
 from vit_core.ssl.dino.loss import DINOLoss
-from vit_core.ssl.dino.dino_utils import DINOMomentumScheduler
+from vit_core.ssl.dino.dino_utils import DINOMomentumScheduler, DINOTeacherTempScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,15 @@ class DINOTrainer(BaseTrainer):
             self.config.training.teacher_momentum_start,
             self.config.training.teacher_momentum_final,
             self.num_epochs,
+        )
+        temp_final = self.config.training.get("teacher_temp_final", None)
+        if temp_final is None:
+            temp_final = self.config.training.teacher_temp
+        self.temp_schedule = DINOTeacherTempScheduler(
+            self.config.training.teacher_temp,
+            temp_final,
+            self.num_epochs,
+            self.config.training.get("teacher_temp_scheduler", "cosine"),
         )
         self.eval_mode = self.config["eval"].get("mode")
 
@@ -32,6 +41,7 @@ class DINOTrainer(BaseTrainer):
         with self.train_logger:
             for epoch in range(self.start_epoch + 1, end_epoch + 1):
                 self.current_epoch = epoch
+                self.criterion.teacher_temp = self.temp_schedule.get_temp(epoch)
                 train_metrics = self.train_epoch(epoch)
                 val_metrics = self.validate()
                 self._update_schedulers(epoch)
