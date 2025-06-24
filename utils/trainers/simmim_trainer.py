@@ -2,7 +2,7 @@ import os
 import torch
 import logging
 
-from torch.cuda.amp import autocast
+from torch.amp import autocast
 
 from .base_trainer import BaseTrainer
 
@@ -60,7 +60,7 @@ class SimMIMTrainer(BaseTrainer):
             inputs = inputs.to(self.device)
             self.optimizer.zero_grad(set_to_none=True)
 
-            with autocast():
+            with autocast(device_type="cuda", dtype=torch.bfloat16):
                 preds_flat, targets_flat = self.model(inputs)
                 loss = self.criterion(preds_flat, targets_flat)
             

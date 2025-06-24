@@ -59,7 +59,7 @@ class SupervisedTrainer(BaseTrainer):
             for idx, (inputs, labels) in enumerate(self.val_loader):
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
 
-                with autocast():
+                with autocast(device_type="cuda", dtype=torch.bfloat16):
                     logits = self.model(inputs)
                     loss = self.criterion(logits, labels)
 

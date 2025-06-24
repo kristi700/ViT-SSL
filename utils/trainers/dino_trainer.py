@@ -81,7 +81,7 @@ class DINOTrainer(BaseTrainer):
             inputs = [x.to(self.device) for x in inputs]
 
             self.optimizer.zero_grad(set_to_none=True)
-            with autocast():
+            with autocast(device_type="cuda", dtype=torch.bfloat16):
                 teacher_output, student_output = self.model(inputs, num_global_views)
 
                 teacher_output = teacher_output.view(
