@@ -89,27 +89,33 @@ class BaseTrainer(ABC):
     def _save_if_best(self, epoch, val_loss):
         """Common checkpointing logic"""
         if self.best_val_loss >= val_loss:
-            best_val_loss = val_loss
-            logger.info(f"New best validation loss: {best_val_loss:.4f}. Saving model...")
+            self.best_val_loss = val_loss
+            self.train_logger.pause()
+            logger.info(
+                f"New best validation loss: {self.best_val_loss:.4f}. Saving model..."
+            )
             checkpoint = {
                 "epoch": epoch,
                 "model_state_dict": self.model.state_dict(),
                 "optimizer_state_dict": self.optimizer.state_dict(),
-                "best_val_loss": best_val_loss,
+                "best_val_loss": self.best_val_loss,
                 "config": self.config,
             }
             os.makedirs(self.save_path, exist_ok=True)
             torch.save(checkpoint, os.path.join(self.save_path, "best_model.pth"))
+            self.train_logger.resume()
 
     def _save_last(self, epoch):
-            checkpoint = {
-                "epoch": epoch,
-                "model_state_dict": self.model.state_dict(),
-                "optimizer_state_dict": self.optimizer.state_dict(),
-                "config": self.config,
-            }
-            os.makedirs(self.save_path, exist_ok=True)
-            torch.save(checkpoint, os.path.join(self.save_path, "last_model.pth"))
+        logger.info("Saving last model checkpoint...")
+        checkpoint = {
+            "epoch": epoch,
+            "model_state_dict": self.model.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "config": self.config,
+        }
+        os.makedirs(self.save_path, exist_ok=True)
+        torch.save(checkpoint, os.path.join(self.save_path, "last_model.pth"))
+        self.train_logger.resume()
 
 
     def _vizualize(self):
