@@ -73,6 +73,7 @@ class BaseTrainer(ABC):
                 self._update_schedulers(epoch)
                 self._log_metrics(train_metrics, val_metrics)
                 self._save_if_best(epoch, val_metrics["Loss"])
+                self._save_last(epoch)
         self._vizualize()
 
     def _update_schedulers(self, epoch):
@@ -99,6 +100,17 @@ class BaseTrainer(ABC):
             }
             os.makedirs(self.save_path, exist_ok=True)
             torch.save(checkpoint, os.path.join(self.save_path, "best_model.pth"))
+
+    def _save_last(self, epoch):
+            checkpoint = {
+                "epoch": epoch,
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "config": self.config,
+            }
+            os.makedirs(self.save_path, exist_ok=True)
+            torch.save(checkpoint, os.path.join(self.save_path, "last_model.pth"))
+
 
     def _vizualize(self):
         """Common vizualizer func"""

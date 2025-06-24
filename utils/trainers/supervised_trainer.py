@@ -88,6 +88,7 @@ class SupervisedTrainer(BaseTrainer):
                 self._update_schedulers(epoch)
                 self._log_metrics(train_metrics, val_metrics)
                 self._save_if_best(epoch, val_metrics["Accuracy"])
+                self._save_last(epoch)
                 if (
                     self.eval_interval
                     and epoch % self.eval_interval == 0
