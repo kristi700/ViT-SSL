@@ -1,4 +1,5 @@
 import os
+import math
 import torch
 import logging
 
@@ -28,6 +29,7 @@ class DINOTrainer(BaseTrainer):
             self.config.training.get("teacher_temp_scheduler", "cosine"),
         )
         self.eval_mode = self.config["eval"].get("mode")
+        self.best_score = - math.inf
 
     def create_criterion(self):
         return DINOLoss(
@@ -46,7 +48,7 @@ class DINOTrainer(BaseTrainer):
                 val_metrics = self.validate()
                 self._update_schedulers(epoch)
                 self._log_metrics(train_metrics, val_metrics)
-                self._save_if_best(epoch, val_metrics["Loss"])
+                self._save_if_best(epoch, val_metrics)
                 self._save_last(epoch)
                 if (
                     self.eval_interval
@@ -151,3 +153,21 @@ class DINOTrainer(BaseTrainer):
         )
         metrics["Loss"] = running_loss / total
         return metrics
+
+    def _save_if_best(self, epoch, val_metrics):
+        score = (val_metrics['CosineSim'] - abs(val_metrics['CenterNorm'] - 1) - abs(val_metrics['StudentSTD'] - val_metrics['TeacherSTD']))
+        if score > self.best_score:
+            self.best_score = score
+            logger.info(
+                f"New best validation loss: {self.best_val_loss:.4f}. Saving model..."
+            )
+            checkpoint = {
+                "epoch": epoch,
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "best_val_loss": self.best_val_loss,
+                "config": self.config,
+            }
+            os.makedirs(self.save_path, exist_ok=True)
+            torch.save(checkpoint, os.path.join(self.save_path, "best_model.pth"))
+            self.train_logger.resume()
