@@ -1,4 +1,5 @@
 import os
+import math
 import torch
 import logging
 
@@ -14,6 +15,7 @@ class SimMIMTrainer(BaseTrainer):
         self.patch_size = self.config["model"]["patch_size"]
         self.in_channels = self.config["model"]["in_channels"]
         self.eval_mode = self.config["eval"].get("mode")
+        self.best_score = - math.inf
 
     def fit(self, num_epochs: int):
         """Common training loop with unsupervised validation"""
@@ -131,3 +133,21 @@ class SimMIMTrainer(BaseTrainer):
         )
         metrics["Loss"] = running_loss / total
         return metrics
+
+    def _save_if_best(self, epoch, val_metrics):
+        score = val_metrics["SSIM"] + 0.01 * val_metrics["PSNR"]
+        if score > self.best_score:
+            self.best_score = score
+            logger.info(
+                f"New best validation loss: {self.best_val_loss:.4f}. Saving model..."
+            )
+            checkpoint = {
+                "epoch": epoch,
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "best_val_loss": self.best_val_loss,
+                "config": self.config,
+            }
+            os.makedirs(self.save_path, exist_ok=True)
+            torch.save(checkpoint, os.path.join(self.save_path, "best_model.pth"))
+            self.train_logger.resume()
