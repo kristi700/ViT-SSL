@@ -23,6 +23,9 @@ class MetricHandler:
             "PSNR": PSNRMetric,
             "SSIM": SSIMMetric,
             "Accuracy": Accuracy,
+            "F1Score": F1Score,
+            "Recall": Recall,
+            "Precision": Precision,
         }
         calculators = {}
         for name in active_metric_names:
@@ -191,3 +194,62 @@ class Accuracy(BaseMetric):
 
     def compute(self, *, correct: int, total: int, **kwargs) -> float:
         return correct / total
+    
+class F1Score(BaseMetric):
+    """
+    Calculates F1 score.
+    """
+
+    def compute(self, *, y_pred: torch.Tensor, y_true: torch.Tensor) -> float:
+        num_classes = torch.max(y_true).item() + 1
+        f1s = []
+
+        for cls in range(num_classes):
+            tp = ((y_pred == cls) & (y_true == cls)).sum().item()
+            fp = ((y_pred == cls) & (y_true != cls)).sum().item()
+            fn = ((y_pred != cls) & (y_true == cls)).sum().item()
+
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+            f1 = (
+                2 * precision * recall / (precision + recall)
+                if (precision + recall) > 0
+                else 0.0
+            )
+            f1s.append(f1)
+
+        return sum(f1s) / len(f1s) if f1s else 0.0
+
+class Recall(BaseMetric):
+    """
+    Calculates Recall
+    """
+
+    def compute(self, *, y_pred: torch.Tensor, y_true: torch.Tensor) -> float:
+        num_classes = torch.max(y_true).item() + 1
+        recalls = []
+
+        for cls in range(num_classes):
+            tp = ((y_pred == cls) & (y_true == cls)).sum().item()
+            fn = ((y_pred != cls) & (y_true == cls)).sum().item()
+
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+            recalls.append(recall)
+
+        return sum(recalls) / len(recalls) if recalls else 0.0
+
+class Precision(BaseMetric):
+    """
+    Calculates Precision
+    """
+
+    def compute(self, *, y_pred: torch.Tensor, y_true: torch.Tensor) -> float:
+        num_classes = torch.max(y_true).item() + 1
+        precisions = []
+
+        for cls in range(num_classes):
+            tp = ((y_pred == cls) & (y_true == cls)).sum().item()
+            fp = ((y_pred == cls) & (y_true != cls)).sum().item()
+
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+            precisions.append(precision)

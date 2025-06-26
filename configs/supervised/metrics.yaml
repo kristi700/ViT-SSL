@@ -1,1 +1,4 @@
 - "Accuracy"
+- "F1Score"
+- "Recall"
+- "Precision"
