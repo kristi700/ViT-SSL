@@ -23,15 +23,7 @@ class CriterionConfig:
 @dataclass
 class TrainingConfig:
     type: str
-    student_temp: Optional[float]
-    teacher_temp: Optional[float]
-    teacher_temp_final: Optional[float] = None
-    teacher_temp_scheduler: Optional[str] = ""
-    teacher_momentum_start: Optional[float]
-    teacher_momentum_final: Optional[float]
-    num_all_views: Optional[int]
-    num_global_views: Optional[int]
-    resume_from_checkpoint: Optional[str]
+
     random_seed: int
     batch_size: int
     num_epochs: int
@@ -40,6 +32,15 @@ class TrainingConfig:
     warmup_epochs: int
     lr_final: float
     weight_decay: float
-    criterion: Optional[CriterionConfig]
     optimizer: OptimizerConfig
+    criterion: Optional[CriterionConfig]
     lr_scheduler: SchedulerConfig
+    student_temp: Optional[float]
+    teacher_temp: Optional[float]
+    teacher_momentum_start: Optional[float]
+    teacher_momentum_final: Optional[float]
+    num_all_views: Optional[int]
+    num_global_views: Optional[int]
+    resume_from_checkpoint: Optional[str]
+    teacher_temp_final: Optional[float] = None
+    teacher_temp_scheduler: Optional[str] = ""

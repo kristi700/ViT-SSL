@@ -1,4 +1,5 @@
 dataset_name: 'stl10'
 data_dir: 'training_data/stl10/unlabeled_images'
-num_workers: 32
+num_workers: 4
 img_size: 96
+local_img_size: 48

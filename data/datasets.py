@@ -91,6 +91,7 @@ class STL10DINODataset(Dataset):
         self.num_all_views = num_all_views
         self._num_global_views = num_global_views
 
+
     @property
     def num_global_views(self) -> int:
         return self._num_global_views
@@ -98,7 +99,7 @@ class STL10DINODataset(Dataset):
     def __len__(self):
         return len(self.files)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx) -> List[torch.Tensor]:
         img_name = self.files[idx]
         image = Image.open(img_name)
         image_views = self._get_dino_views(image)

@@ -2,18 +2,18 @@ import copy
 import torch
 
 from torch import nn
-from typing import List
+from typing import List, Tuple
 
 from .head import DINOHead
 from vit_core.encoder_block import EncoderBlock
-from vit_core.patch_embedding import ConvolutionalPatchEmbedding
+from vit_core.patch_embedding import DynamicPatchEmbedding
 
 # NOTE - might be nicer to move to some generic place for later use (to use it in more places for refactor)
 class ViTBackbone(nn.Module):
     def __init__(
         self,
         num_blocks: int,
-        input_shape,
+        input_shape: Tuple[int, int],
         embed_dim: int,
         patch_size: int,
         num_heads: int = 8,
@@ -27,7 +27,7 @@ class ViTBackbone(nn.Module):
                 for _ in range(num_blocks)
             ]
         )
-        self.patch_embedding = ConvolutionalPatchEmbedding(
+        self.patch_embedding = DynamicPatchEmbedding(
             input_shape, embed_dim, patch_size
         )
 
@@ -108,12 +108,15 @@ class DINOViT(nn.Module):
         """
         Performs both student and teacher models' forwarding methods.
         """
-        # NOTE - we resize all to the same size for now, variable input sizes should be implemented later!
-        student_input_batch = torch.cat(multi_crop_views, dim=0)
-        student_output = self._student_forward(student_input_batch)
+        global_crops = torch.cat(multi_crop_views[:num_global_views], dim=0)
+        local_crops = torch.cat(multi_crop_views[num_global_views:], dim=0)
 
-        teacher_input_batch = torch.cat(multi_crop_views[:num_global_views], dim=0)
-        teacher_output = self._teacher_forward(teacher_input_batch)
+        student_output_global = self._student_forward(global_crops)
+        student_output_local = self._student_forward(local_crops)
+        student_output = torch.cat([student_output_global, student_output_local])
+
+        with torch.no_grad():
+            teacher_output = self._teacher_forward(global_crops)
 
         return teacher_output, student_output
 
@@ -132,6 +135,7 @@ class DINOViT(nn.Module):
                 (1 - teacher_momentum) * param_student_h.detach().data
             )
 
+    # TODO - adjust!!!
     @torch.no_grad()
     def inference_forward(self, x: torch.Tensor, return_features=False):
         """

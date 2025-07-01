@@ -3,7 +3,7 @@ import math
 import torch
 import logging
 
-from torch.cuda.amp import autocast
+from torch.amp import autocast
 
 from .base_trainer import BaseTrainer
 from vit_core.ssl.dino.loss import DINOLoss
@@ -127,7 +127,7 @@ class DINOTrainer(BaseTrainer):
         with torch.no_grad():
             for idx, inputs in enumerate(self.val_loader):
                 inputs = [x.to(self.device) for x in inputs]
-                with autocast():
+                with autocast(device_type="cuda", dtype=torch.bfloat16):
                     teacher_output, student_output = self.model(inputs, num_global_views)
 
                     teacher_output = teacher_output.view(

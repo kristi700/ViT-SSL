@@ -1,6 +1,6 @@
 - name: RandomResizedCrop
   params:
-    size: ${data.img_size}
+    size: ${data.local_img_size}
     scale: [0.08, 0.4]
 - name: RandomHorizontalFlip
   params: {}

@@ -10,3 +10,4 @@ class DataConfig:
     val_split: float
     num_workers: int
     img_size: int
+    local_img_size: Optional[int]

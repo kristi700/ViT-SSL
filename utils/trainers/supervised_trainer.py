@@ -3,7 +3,7 @@ import math
 import torch
 import logging
 
-from torch.cuda.amp import autocast
+from torch.amp import autocast
 
 from .base_trainer import BaseTrainer
 from utils.train_utils import make_optimizer
@@ -31,7 +31,7 @@ class SupervisedTrainer(BaseTrainer):
             inputs, labels = inputs.to(self.device), labels.to(self.device)
 
             self.optimizer.zero_grad(set_to_none=True)
-            with autocast():
+            with autocast(device_type="cuda", dtype=torch.bfloat16):
                 preds = self.model(inputs)
                 loss = self.criterion(preds, labels)
 

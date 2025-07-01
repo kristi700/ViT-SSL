@@ -106,7 +106,7 @@ class SimMIMTrainer(BaseTrainer):
             for idx, inputs in enumerate(self.val_loader):
                 inputs = inputs.to(self.device)
 
-                with autocast():
+                with autocast(device_type="cuda", dtype=torch.bfloat16):
                     preds_flat, targets_flat = self.model(inputs)
                     loss = self.criterion(preds_flat, targets_flat)
     
