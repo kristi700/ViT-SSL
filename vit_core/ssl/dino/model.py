@@ -135,7 +135,6 @@ class DINOViT(nn.Module):
                 (1 - teacher_momentum) * param_student_h.detach().data
             )
 
-    # TODO - adjust!!!
     @torch.no_grad()
     def inference_forward(self, x: torch.Tensor, return_features=False):
         """
