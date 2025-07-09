@@ -251,7 +251,6 @@ def run_evaluation(
         val_labels,
         config["eval"].get("experiment_path", save_path),
     )
-    # NOTE - rethink maybemaybe
     save_combined_results(results, config["eval"].get("experiment_path", save_path))
 
 
