@@ -159,13 +159,13 @@ class DINOTrainer(BaseTrainer):
         if score > self.best_score:
             self.best_score = score
             logger.info(
-                f"New best validation loss: {self.best_val_loss:.4f}. Saving model..."
+                f"New best validation score: {self.best_score:.4f}. Saving model..."
             )
             checkpoint = {
                 "epoch": epoch,
                 "model_state_dict": self.model.state_dict(),
                 "optimizer_state_dict": self.optimizer.state_dict(),
-                "best_val_loss": self.best_val_loss,
+                "best_val_score": self.best_score,
                 "config": self.config,
             }
             os.makedirs(self.save_path, exist_ok=True)
