@@ -7,7 +7,7 @@ from torch.nn.functional import softmax, log_softmax
 class DINOLoss(nn.Module):
     def __init__(self, teacher_temp: float, student_temp: float):
         super().__init__()
-        self.teacher_temp = teacher_temp  # TODO - add scheduling for this!
+        self.teacher_temp = teacher_temp
         self.student_temp = student_temp
 
     def forward(
