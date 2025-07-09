@@ -66,8 +66,11 @@ class DINOViT(nn.Module):
         )
         self.student_backbone = copy.deepcopy(self.teacher_backbone)
 
+        # NOTE- done without deepcopy due to pytorch bug - (https://github.com/pytorch/pytorch/issues/28594)
         self.teacher_head = DINOHead(embed_dim, output_dim)
-        self.student_head = copy.deepcopy(self.teacher_head)
+        self.student_head = DINOHead(embed_dim, output_dim)
+
+        self.student_head.load_state_dict(self.teacher_head.state_dict())
 
         for param in self.teacher_backbone.parameters():
             param.requires_grad = False
