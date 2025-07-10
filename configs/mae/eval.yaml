@@ -1,0 +1,7 @@
+interval: 1
+mode: ['eval_knn', 'eval_linear', 'eval_umap']
+
+dataset_name: 'stl10'
+data_csv: 'training_data/stl10/train_labels.json'
+data_dir: 'training_data/stl10/train_images'
+num_classes: 10

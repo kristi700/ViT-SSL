@@ -41,7 +41,7 @@ def _get_dataset(config, mode, transforms):
         else:
             raise ValueError(f"Unknown supervised/labeled dataset: {dataset_name}")
 
-    elif mode == "simmim":
+    elif mode in ("simmim", "mae"):
         if dataset_name == "stl10":
 
             dataset = STL10UnsupervisedDataset(data_dir, transform=transforms["train"])

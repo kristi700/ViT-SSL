@@ -8,7 +8,7 @@ from utils.model_builder import build_model
 from data.data_builder import prepare_dataloaders
 from utils.schemas.training_schemas import TrainConfig
 from utils.train_utils import get_transforms, setup_device
-from utils.trainers import SupervisedTrainer, SimMIMTrainer, DINOTrainer
+from utils.trainers import SupervisedTrainer, SimMIMTrainer, DINOTrainer, MAETrainer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -66,6 +66,10 @@ def get_trainer(
         trainer = DINOTrainer(
             model, save_path, config, train_loader, val_loader, device
         )
+    elif mode == "mae":
+        trainer = MAETrainer(
+            model, save_path, config, train_loader, val_loader, device
+        )       
     else:
         raise ValueError(f"Unknown training mode: {mode}")
 

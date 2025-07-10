@@ -1,0 +1,5 @@
+type: 'mae'
+criterion:
+  name: L1Loss
+  params:
+    reduction: mean

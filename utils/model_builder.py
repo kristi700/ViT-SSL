@@ -3,9 +3,9 @@ import torch
 import logging
 
 from vit_core.vit import ViT
+from vit_core.ssl.mae import MAEViT
 from vit_core.ssl.dino.model import DINOViT
 from vit_core.ssl.simmim.model import SimMIMViT
-
 logger = logging.getLogger(__name__)
 
 def load_weights(model, checkpoint_path: str):
@@ -165,6 +165,17 @@ def build_model(config):
             output_dim=config.model.output_dim,
             center_momentum=config.model.center_momentum,
         )
+    elif mode == "mae":
+        model = MAEViT(
+            input_shape=image_shape,
+            patch_size=config.model.patch_size,
+            embed_dim=config.model.embed_dim,
+            num_blocks=config.model.num_blocks,
+            num_heads=config.model.num_heads,
+            mlp_dim=config.model.mlp_dim,
+            dropout=config.model.dropout,
+            mask_ratio=config.model.mask_ratio,
+        ) 
     else:
         raise ValueError(f"Unknown model-building mode: {mode}")
 
@@ -179,7 +190,7 @@ def build_model(config):
         checkpoint_path = os.path.join(config.eval.experiment_path, "best_model.pth")
         model = load_weights(model, checkpoint_path)
 
-    return torch.compile(model)
+    return model #torch.compile(model)
 
 
 def _check_loaded_model(model, config):

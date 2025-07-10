@@ -1,0 +1,18 @@
+defaults:
+  - training_config
+
+  - base@data: data
+  - base@model: model
+  - base@training: training
+
+  - mae@eval: eval
+  - mae@data: data
+  - mae@model: model
+  - mae@training: training
+  - mae@transforms.train: train_transforms
+  - mae@transforms.val: val_transforms
+  - mae@metrics: metrics
+
+hydra:
+  run:
+    dir: ./experiments/${training.type}/${now:%Y-%m-%d_%H_%M_%S}
