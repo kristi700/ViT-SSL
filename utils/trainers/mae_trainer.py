@@ -4,6 +4,7 @@ import torch
 import logging
 
 from torch.amp import autocast
+import torch.nn.functional as F
 
 from .base_trainer import BaseTrainer
 from vit_core.ssl.mae.loss import MAELoss
@@ -34,7 +35,7 @@ class MAETrainer(BaseTrainer):
                 val_metrics = self.validate()
                 self._update_schedulers(epoch)
                 self._log_metrics(train_metrics, val_metrics)
-                self._save_if_best(epoch, val_metrics["Loss"])
+                self._save_if_best(epoch, val_metrics)
                 self._save_last(epoch)
                 if (
                     self.eval_interval
@@ -62,7 +63,7 @@ class MAETrainer(BaseTrainer):
     ):
         self.model.train()
         total, running_loss = 0, 0
-        all_pred_patches, all_target_patches = [], []
+        all_reconstructed_images, all_inputs = [], []
 
         for idx, inputs in enumerate(self.train_loader):
             inputs = inputs.to(self.device)
@@ -82,23 +83,21 @@ class MAETrainer(BaseTrainer):
             running_loss += loss.item()
             total += 1
 
-            # preds_patches = torch.clamp(
-            #     preds_flat.reshape(
-            #         -1, self.in_channels, self.patch_size, self.patch_size
-            #     ),
-            #     0,
-            #     1,
-            # )
-            # targets_patches = targets_flat.reshape(
-            #     -1, self.in_channels, self.patch_size, self.patch_size
-            # )
-            # all_pred_patches.append(preds_patches)
-            # all_target_patches.append(targets_patches)
+            reconstructed_images = F.fold(
+                preds.transpose(1, 2),
+                output_size=(inputs.shape[2], inputs.shape[3]),
+                kernel_size=(self.patch_size, self.patch_size),
+                stride=(self.patch_size, self.patch_size)
+            )
+            
+
+            all_reconstructed_images.append(reconstructed_images)
+            all_inputs.append(inputs)
             self.train_logger.train_log_step(epoch, idx)
 
         metrics = self.metric_handler.calculate_metrics(
-            preds_patches=torch.cat(all_pred_patches, dim=0),
-            targets_patches=torch.cat(all_target_patches, dim=0),
+            preds_patches=torch.cat(all_reconstructed_images, dim=0),
+            targets_patches=torch.cat(all_inputs, dim=0),
         )
         metrics["Loss"] = running_loss / total
         return metrics
@@ -106,7 +105,7 @@ class MAETrainer(BaseTrainer):
     def validate(self):
         self.model.eval()
         total, running_loss = 0, 0
-        all_pred_patches, all_target_patches = [], []
+        all_reconstructed_images, all_inputs = [], []
 
         with torch.no_grad():
             for idx, inputs in enumerate(self.val_loader):
@@ -119,23 +118,21 @@ class MAETrainer(BaseTrainer):
                 running_loss += loss.item()
                 total += 1
 
-                # preds_patches = torch.clamp(
-                #     preds_flat.reshape(
-                #         -1, self.in_channels, self.patch_size, self.patch_size
-                #     ),
-                #     0,
-                #     1,
-                # )
-                # targets_patches = targets_flat.reshape(
-                #     -1, self.in_channels, self.patch_size, self.patch_size
-                # )
-                # all_pred_patches.append(preds_patches)
-                # all_target_patches.append(targets_patches)
+                reconstructed_images = F.fold(
+                    preds.transpose(1, 2),
+                    output_size=(inputs.shape[2], inputs.shape[3]),
+                    kernel_size=(self.patch_size, self.patch_size),
+                    stride=(self.patch_size, self.patch_size)
+                )
+            
+
+                all_reconstructed_images.append(reconstructed_images)
+                all_inputs.append(inputs)
                 self.train_logger.val_log_step(idx)
 
         metrics = self.metric_handler.calculate_metrics(
-            preds_patches=torch.cat(all_pred_patches, dim=0),
-            targets_patches=torch.cat(all_target_patches, dim=0),
+            preds_patches=torch.cat(all_reconstructed_images, dim=0),
+            targets_patches=torch.cat(all_inputs, dim=0),
         )
         metrics["Loss"] = running_loss / total
         return metrics

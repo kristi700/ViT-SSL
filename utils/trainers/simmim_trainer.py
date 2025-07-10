@@ -28,7 +28,7 @@ class SimMIMTrainer(BaseTrainer):
                 val_metrics = self.validate()
                 self._update_schedulers(epoch)
                 self._log_metrics(train_metrics, val_metrics)
-                self._save_if_best(epoch, val_metrics["Loss"])
+                self._save_if_best(epoch, val_metrics)
                 self._save_last(epoch)
                 if (
                     self.eval_interval
