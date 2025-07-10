@@ -22,7 +22,7 @@ class MAELoss(nn.Module):
         gt_patches = torch.permute(self.patchify(y), (0, 2, 1)).to(y.device)
         std = torch.std(gt_patches, dim=-1, keepdim=True)
         mean = torch.mean(gt_patches, dim=-1, keepdim=True)
-        gt_patches = (gt_patches - mean) / std
+        gt_patches = (gt_patches - mean) / std.clamp(min=1e-8)
         masked_indices_expanded = masked_indices.unsqueeze(-1).expand(-1, -1, gt_patches.shape[-1])
         gt_patches = torch.gather(gt_patches, dim=1, index=masked_indices_expanded)
         pred_patches = torch.gather(x, dim=1, index=masked_indices_expanded)
