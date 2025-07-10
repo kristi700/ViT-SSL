@@ -166,12 +166,16 @@ def build_model(config):
             center_momentum=config.model.center_momentum,
         )
     elif mode == "mae":
+        # TODO - init needs to be separate for encoder and decoder as we are creating non symmetrical design
         model = MAEViT(
             input_shape=image_shape,
             patch_size=config.model.patch_size,
-            embed_dim=config.model.embed_dim,
-            num_blocks=config.model.num_blocks,
-            num_heads=config.model.num_heads,
+            encoder_embed_dim=config.model.embed_dim,
+            decoder_embed_dim=config.model.embed_dim//2,
+            encoder_depth=config.model.num_blocks,
+            decoder_depth=config.model.num_blocks//2,
+            encoder_num_heads=config.model.num_heads,
+            decoder_num_heads =config.model.num_heads//2,
             mlp_dim=config.model.mlp_dim,
             dropout=config.model.dropout,
             mask_ratio=config.model.mask_ratio,
