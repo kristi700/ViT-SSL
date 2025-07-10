@@ -6,6 +6,7 @@ import logging
 from torch.amp import autocast
 
 from .base_trainer import BaseTrainer
+from vit_core.ssl.mae.loss import MAELoss
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,9 @@ class MAETrainer(BaseTrainer):
         self.eval_mode = self.config["eval"].get("mode")
         self.best_score = - math.inf
 
+    def create_criterion(self):
+        return MAELoss(self.config["model"]["patch_size"])
+    
     def fit(self, num_epochs: int):
         """Common training loop with unsupervised validation"""
         end_epoch = self.start_epoch + num_epochs
@@ -65,8 +69,8 @@ class MAETrainer(BaseTrainer):
             self.optimizer.zero_grad(set_to_none=True)
 
             with autocast(device_type="cuda", dtype=torch.bfloat16):
-                preds_flat, targets_flat = self.model(inputs)
-                loss = self.criterion(preds_flat, targets_flat)
+                preds, masked_indicies = self.model(inputs)
+                loss = self.criterion(preds, masked_indicies, inputs)
             
             self.scaler.scale(loss).backward()
             self.scaler.step(self.optimizer)
@@ -78,18 +82,18 @@ class MAETrainer(BaseTrainer):
             running_loss += loss.item()
             total += 1
 
-            preds_patches = torch.clamp(
-                preds_flat.reshape(
-                    -1, self.in_channels, self.patch_size, self.patch_size
-                ),
-                0,
-                1,
-            )
-            targets_patches = targets_flat.reshape(
-                -1, self.in_channels, self.patch_size, self.patch_size
-            )
-            all_pred_patches.append(preds_patches)
-            all_target_patches.append(targets_patches)
+            # preds_patches = torch.clamp(
+            #     preds_flat.reshape(
+            #         -1, self.in_channels, self.patch_size, self.patch_size
+            #     ),
+            #     0,
+            #     1,
+            # )
+            # targets_patches = targets_flat.reshape(
+            #     -1, self.in_channels, self.patch_size, self.patch_size
+            # )
+            # all_pred_patches.append(preds_patches)
+            # all_target_patches.append(targets_patches)
             self.train_logger.train_log_step(epoch, idx)
 
         metrics = self.metric_handler.calculate_metrics(
@@ -109,24 +113,24 @@ class MAETrainer(BaseTrainer):
                 inputs = inputs.to(self.device)
 
                 with autocast(device_type="cuda", dtype=torch.bfloat16):
-                    preds_flat, targets_flat = self.model(inputs)
-                    loss = self.criterion(preds_flat, targets_flat)
+                    preds, masked_indicies = self.model(inputs)
+                    loss = self.criterion(preds, masked_indicies, inputs)
     
                 running_loss += loss.item()
                 total += 1
 
-                preds_patches = torch.clamp(
-                    preds_flat.reshape(
-                        -1, self.in_channels, self.patch_size, self.patch_size
-                    ),
-                    0,
-                    1,
-                )
-                targets_patches = targets_flat.reshape(
-                    -1, self.in_channels, self.patch_size, self.patch_size
-                )
-                all_pred_patches.append(preds_patches)
-                all_target_patches.append(targets_patches)
+                # preds_patches = torch.clamp(
+                #     preds_flat.reshape(
+                #         -1, self.in_channels, self.patch_size, self.patch_size
+                #     ),
+                #     0,
+                #     1,
+                # )
+                # targets_patches = targets_flat.reshape(
+                #     -1, self.in_channels, self.patch_size, self.patch_size
+                # )
+                # all_pred_patches.append(preds_patches)
+                # all_target_patches.append(targets_patches)
                 self.train_logger.val_log_step(idx)
 
         metrics = self.metric_handler.calculate_metrics(
