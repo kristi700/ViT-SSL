@@ -10,21 +10,24 @@ from vit_core.encoder_block import EncoderBlock
 class MAEViT(nn.Module):
     def __init__(
         self,
-        num_blocks: int,
+        encoder_depth: int,
+        decoder_depth: int,
         input_shape,
         embed_dim: int,
+        decoder_embed_dim: int,
         patch_size: int,
-        num_heads: int = 8,
-        mlp_dim: int = 3072,
+        num_heads: int,
+        decoder_num_heads: int,
+        mlp_dim: int,
         dropout: float = 0.1,
-        mask_ratio: float = 0.6,
+        mask_ratio: float = 0.75,
     ):
         super().__init__()
         # ENCODER
         self.encoder_blocks = nn.ModuleList(
             [
                 EncoderBlock(embed_dim, num_heads, mlp_dim, dropout)
-                for _ in range(num_blocks)
+                for _ in range(encoder_depth)
             ]
         )
         self.encoder_projection = nn.Linear(
@@ -37,8 +40,8 @@ class MAEViT(nn.Module):
         # DECODER
         self.decoder = nn.ModuleList(
             [
-                DecoderBlock(embed_dim, num_heads, mlp_dim, dropout)
-                for _ in range(num_blocks)
+                DecoderBlock(decoder_embed_dim, decoder_num_heads, mlp_dim, dropout)
+                for _ in range(decoder_depth)
             ]
         )
 
