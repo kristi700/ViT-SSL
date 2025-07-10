@@ -11,8 +11,6 @@ from vit_core.ssl.mae.loss import MAELoss
 
 logger = logging.getLogger(__name__)
 
-# TODO - for now its the simmim trainer, needs fixing when model works!
-
 class MAETrainer(BaseTrainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -48,11 +48,11 @@ class ViTBackbone(nn.Module):
 class DINOViT(nn.Module):
     def __init__(
         self,
-        num_blocks: int,
+        encoder_depth: int,
         input_shape,
-        embed_dim: int,
+        encoder_embed_dim: int,
         patch_size: int,
-        num_heads: int = 8,
+        encoder_num_heads: int = 8,
         mlp_dim: int = 3072,
         dropout: float = 0.1,
         output_dim: int = 65536,
@@ -62,11 +62,11 @@ class DINOViT(nn.Module):
         self.center_momentum = center_momentum
 
         self.teacher_backbone = ViTBackbone(
-            num_blocks, input_shape, embed_dim, patch_size, num_heads, mlp_dim, dropout
+            encoder_depth, input_shape, encoder_embed_dim, patch_size, encoder_num_heads, mlp_dim, dropout
         )
         self.student_backbone = copy.deepcopy(self.teacher_backbone)
 
-        self.teacher_head = DINOHead(embed_dim, output_dim)
+        self.teacher_head = DINOHead(encoder_embed_dim, output_dim)
         self.student_head = copy.deepcopy(self.teacher_head)
 
         for param in self.teacher_backbone.parameters():

@@ -1,1 +1,4 @@
 mask_ratio: 0.75
+decoder_embed_dim: 192
+decoder_depth: 3
+decoder_num_heads: 3

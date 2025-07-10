@@ -10,25 +10,25 @@ class ViT(nn.Module):
     def __init__(
         self,
         num_classes: int,
-        num_blocks: int,
+        encoder_depth: int,
         input_shape,
-        embed_dim: int,
+        encoder_embed_dim: int,
         patch_size: int,
-        num_heads: int = 8,
+        encoder_num_heads: int = 8,
         mlp_dim: int = 3072,
         dropout: float = 0.1,
     ):
         super().__init__()
         self.encoder_blocks = nn.ModuleList(
             [
-                EncoderBlock(embed_dim, num_heads, mlp_dim, dropout)
-                for i in range(num_blocks)
+                EncoderBlock(encoder_embed_dim, encoder_num_heads, mlp_dim, dropout)
+                for i in range(encoder_depth)
             ]
         )
         self.patch_embedding = ConvolutionalPatchEmbedding(
-            input_shape, embed_dim, patch_size
+            input_shape, encoder_embed_dim, patch_size
         )
-        self.classification_head = MLPHead(embed_dim, num_classes)
+        self.classification_head = MLPHead(encoder_embed_dim, num_classes)
 
     def forward(self, x: torch.Tensor, return_attn=False) -> torch.Tensor:
         x = self.patch_embedding(x)
