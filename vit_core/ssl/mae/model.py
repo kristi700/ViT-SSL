@@ -5,6 +5,8 @@ from .decoder import DecoderBlock
 from .masking import get_and_apply_mask
 from vit_core.encoder_block import EncoderBlock
 
+# TODO - docstrings!!
+
 class MAEViT(nn.Module):
     def __init__(
         self,
@@ -84,12 +86,17 @@ class MAEViT(nn.Module):
         reconstructed_image = self.prediction_head(full_patches)
         return reconstructed_image
 
-    def forward(self, x: torch.Tensor, return_bool_mask=False) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x, masked_indicies, resolve_ids = self.encoder_forward(x)
         x = self.decoder_forward(x, resolve_ids)
         return x, masked_indicies
 
-
+    # TODO - add CLS token based approach as well (https://arxiv.org/pdf/2111.06377 - A. Implementation Details, ViT architecture)
     @torch.no_grad()
-    def inference_forward(self, x: torch.Tensor, return_patch_features=False):
-        ...
+    def inference_forward(self, x: torch.Tensor):
+        patches =  torch.permute(self.unfold(x), (0, 2, 1)).to(x.device)
+        patches = self.encoder_projection(patches)
+        patches += self.encoder_positional_embedding
+        for encoder_block in self.encoder_blocks:
+            patches, _ = encoder_block(patches)
+        return patches.mean(dim=1)
