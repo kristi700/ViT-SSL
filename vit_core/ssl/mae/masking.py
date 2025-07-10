@@ -6,6 +6,14 @@ from typing import Union
 def get_and_apply_mask(
     patches: torch.Tensor, mask_ratio: float
 ) -> Union[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Creates masking for mask_raito percent of the patches and applies it
+    
+    Returns:
+        - visible_patches: Processed patches
+        - masked_indicies: Indicies of the masked patches for loss calculation
+        - resolve_ids: the ids for deshuffling patches
+    """
     batch_num, patch_num, ddim = patches.shape
     num_visible = int(patch_num * (1 - mask_ratio))
 
