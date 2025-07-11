@@ -52,7 +52,6 @@
 
 There is one unified training file (train.py), where one can train Supervised, DINO, SimMIM and fine-tune pre-trained models. The type of training needs to be specified in the configs.
 
-# GIF - Showing training logger
 
 ## 📊 Results
 
@@ -60,6 +59,7 @@ There is one unified training file (train.py), where one can train Supervised, D
 |---------------------|---------------------|----------------|
 | DINO                | STL10               | TODO           |
 | SimMIM              | STL10               | TODO           |
+| MAE                 | STL10               | TODO           |
 | Supervised          | STL10               | TODO           |
 
 ## 📜 License
