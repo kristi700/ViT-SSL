@@ -1,7 +1,7 @@
 import torch.nn.functional as F
 
 from torch import nn
-from torch.nn.utils import weight_norm
+from torch.nn.utils.parametrizations import weight_norm
 
 
 class DINOHead(nn.Module):
@@ -14,9 +14,7 @@ class DINOHead(nn.Module):
             nn.GELU(),
             nn.Linear(hidden_dim, embed_dim),
         )
-        self.fully_connected = nn.Linear(
-            embed_dim, output_dim
-        )  # NOTE - weightnorm is to be added (cant deepcopy) - weight_norm(nn.Linear(embed_dim, output_dim), name="weight")
+        self.fully_connected = weight_norm(nn.Linear(embed_dim, output_dim), name="weight")
 
     def forward(self, x):
         x = self.mlp(x)

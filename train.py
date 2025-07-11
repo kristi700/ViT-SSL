@@ -31,7 +31,7 @@ def load_checkpoint_if_exists(config, model, device):
             logger.warning(f"Resume path {resume_path} does not exist. Starting from scratch.")
         return 0, float("inf")
 
-    checkpoint = torch.load(resume_path, map_location=device)
+    checkpoint = torch.load(resume_path, map_location=device, weights_only=False)
     model.load_state_dict(checkpoint["model_state_dict"])
 
     start_epoch = checkpoint["epoch"]
@@ -76,7 +76,7 @@ def get_trainer(
     if start_epoch > 0:
         resume_path = config["training"].get("resume_from_checkpoint", None)
         if resume_path and os.path.exists(resume_path):
-            checkpoint = torch.load(resume_path, map_location=device)
+            checkpoint = torch.load(resume_path, map_location=device, weights_only=False)
             if hasattr(trainer, "optimizer") and "optimizer_state_dict" in checkpoint:
                 trainer.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
                 logger.info("Loaded optimizer state from checkpoint.")

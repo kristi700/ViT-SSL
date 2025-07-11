@@ -125,13 +125,13 @@ class SupervisedTrainer(BaseTrainer):
 
     def _save_if_best(self, epoch: int, val_accuracy: float):
         if val_accuracy > self.best_val_acc:
-            best_val_acc = val_accuracy
-            logger.info(f"New best validation accuracy: {best_val_acc:.4f}. Saving model...")
+            self.best_val_acc = val_accuracy
+            logger.info(f"New best validation accuracy: {self.best_val_acc:.4f}. Saving model...")
             checkpoint = {
                 "epoch": epoch,
                 "model_state_dict": self.model.state_dict(),
                 "optimizer_state_dict": self.optimizer.state_dict(),
-                "best_val_acc": best_val_acc,
+                "best_val_acc": self.best_val_acc,
                 "config": self.config,
             }
             os.makedirs(self.save_path, exist_ok=True)
