@@ -88,9 +88,8 @@ class MAETrainer(BaseTrainer):
                 stride=(self.patch_size, self.patch_size)
             )
             
-
-            all_reconstructed_images.append(reconstructed_images)
-            all_inputs.append(inputs)
+            all_reconstructed_images.append(reconstructed_images.detach().cpu())
+            all_inputs.append(inputs.detach().cpu())
             self.train_logger.train_log_step(epoch, idx)
 
         metrics = self.metric_handler.calculate_metrics(
@@ -124,8 +123,8 @@ class MAETrainer(BaseTrainer):
                 )
             
 
-                all_reconstructed_images.append(reconstructed_images)
-                all_inputs.append(inputs)
+                all_reconstructed_images.append(reconstructed_images.detach().cpu())
+                all_inputs.append(inputs.detach().cpu())
                 self.train_logger.val_log_step(idx)
 
         metrics = self.metric_handler.calculate_metrics(

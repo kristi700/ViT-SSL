@@ -86,8 +86,8 @@ class SimMIMTrainer(BaseTrainer):
             targets_patches = targets_flat.reshape(
                 -1, self.in_channels, self.patch_size, self.patch_size
             )
-            all_pred_patches.append(preds_patches)
-            all_target_patches.append(targets_patches)
+            all_pred_patches.append(preds_patches.detach().cpu())
+            all_target_patches.append(targets_patches.detach().cpu())
             self.train_logger.train_log_step(epoch, idx)
 
         metrics = self.metric_handler.calculate_metrics(
@@ -123,8 +123,8 @@ class SimMIMTrainer(BaseTrainer):
                 targets_patches = targets_flat.reshape(
                     -1, self.in_channels, self.patch_size, self.patch_size
                 )
-                all_pred_patches.append(preds_patches)
-                all_target_patches.append(targets_patches)
+                all_pred_patches.append(preds_patches.detach().cpu())
+                all_target_patches.append(targets_patches.detach().cpu())
                 self.train_logger.val_log_step(idx)
 
         metrics = self.metric_handler.calculate_metrics(
