@@ -74,11 +74,13 @@ class DINOTrainer(BaseTrainer):
         self,
         epoch: int,
     ):
-        # TODO - in train + val, we only take the last student + teacher output!!!
         self.model.train()
         total, running_loss = 0, 0
         num_global_views = self.train_loader.dataset.num_global_views
         current_teach_momentum = self.momentum_schedule.get_momentum(epoch)
+
+        metric_accumulation_steps = 50
+        accumulated_teacher, accumulated_student =[], []
 
         for idx, inputs in enumerate(self.train_loader):
             inputs = [x.to(self.device) for x in inputs]
@@ -109,13 +111,16 @@ class DINOTrainer(BaseTrainer):
 
             running_loss += loss.item()
             total += 1
+            if idx % metric_accumulation_steps == 0 or idx == len(self.train_loader) - 1:
+                accumulated_teacher.append(teacher_output.detach().cpu())
+                accumulated_student.append(student_output.detach().cpu())
 
             self.train_logger.train_log_step(epoch, idx)
 
         metrics = self.metric_handler.calculate_metrics(
             center=self.model.center,
-            teacher_distribution=teacher_output,
-            student_distribution=student_output,
+            teacher_distribution=torch.cat(accumulated_teacher, dim=1),
+            student_distribution=torch.cat(accumulated_student, dim=1),
         )
         metrics["Loss"] = running_loss / total
         return metrics
@@ -124,7 +129,8 @@ class DINOTrainer(BaseTrainer):
         self.model.eval()
         total, running_loss = 0, 0
         num_global_views = self.val_loader.dataset.num_global_views
-
+        accumulated_teacher, accumulated_student = [], []
+        
         with torch.no_grad():
             for idx, inputs in enumerate(self.val_loader):
                 inputs = [x.to(self.device) for x in inputs]
@@ -142,15 +148,17 @@ class DINOTrainer(BaseTrainer):
                         student_output.shape[1],
                     )
                     loss = self.criterion(teacher_output, student_output, self.model.center)
-
+                
+                accumulated_teacher.append(teacher_output.detach().cpu())
+                accumulated_student.append(student_output.detach().cpu())
                 running_loss += loss.item()
                 total += 1
                 self.train_logger.val_log_step(idx)
 
         metrics = self.metric_handler.calculate_metrics(
             center=self.model.center,
-            teacher_distribution=teacher_output,
-            student_distribution=student_output,
+            teacher_distribution=torch.cat(accumulated_teacher, dim=1),
+            student_distribution=torch.cat(accumulated_student, dim=1),
         )
         metrics["Loss"] = running_loss / total
         return metrics

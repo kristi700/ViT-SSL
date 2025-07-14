@@ -56,8 +56,9 @@ class SimMIMTrainer(BaseTrainer):
     ):
         self.model.train()
         total, running_loss = 0, 0
-        all_pred_patches, all_target_patches = [], []
-
+        metric_accumulation_steps = 50
+        accumulated_preds, accumulated_targets =[], []
+        # TODO - fully reconstructed image might be needed for metrics!!
         for idx, inputs in enumerate(self.train_loader):
             inputs = inputs.to(self.device)
             self.optimizer.zero_grad(set_to_none=True)
@@ -76,23 +77,24 @@ class SimMIMTrainer(BaseTrainer):
             running_loss += loss.item()
             total += 1
 
-            preds_patches = torch.clamp(
-                preds_flat.reshape(
+            if idx % metric_accumulation_steps == 0 or idx == len(self.train_loader) - 1:
+                preds_patches = torch.clamp(
+                    preds_flat.reshape(
+                        -1, self.in_channels, self.patch_size, self.patch_size
+                    ),
+                    0,
+                    1,
+                )
+                targets_patches = targets_flat.reshape(
                     -1, self.in_channels, self.patch_size, self.patch_size
-                ),
-                0,
-                1,
-            )
-            targets_patches = targets_flat.reshape(
-                -1, self.in_channels, self.patch_size, self.patch_size
-            )
-            all_pred_patches.append(preds_patches.detach().cpu())
-            all_target_patches.append(targets_patches.detach().cpu())
+                )
+                accumulated_preds.append(preds_patches.detach().cpu())
+                accumulated_targets.append(targets_patches.detach().cpu())
             self.train_logger.train_log_step(epoch, idx)
 
         metrics = self.metric_handler.calculate_metrics(
-            preds_patches=torch.cat(all_pred_patches, dim=0),
-            targets_patches=torch.cat(all_target_patches, dim=0),
+            preds_patches=torch.cat(accumulated_preds, dim=0),
+            targets_patches=torch.cat(accumulated_targets, dim=0),
         )
         metrics["Loss"] = running_loss / total
         return metrics
@@ -100,7 +102,7 @@ class SimMIMTrainer(BaseTrainer):
     def validate(self):
         self.model.eval()
         total, running_loss = 0, 0
-        all_pred_patches, all_target_patches = [], []
+        accumulated_preds, accumulated_targets =[], []
 
         with torch.no_grad():
             for idx, inputs in enumerate(self.val_loader):
@@ -123,13 +125,13 @@ class SimMIMTrainer(BaseTrainer):
                 targets_patches = targets_flat.reshape(
                     -1, self.in_channels, self.patch_size, self.patch_size
                 )
-                all_pred_patches.append(preds_patches.detach().cpu())
-                all_target_patches.append(targets_patches.detach().cpu())
+                accumulated_preds.append(preds_patches.detach().cpu())
+                accumulated_targets.append(targets_patches.detach().cpu())
                 self.train_logger.val_log_step(idx)
 
         metrics = self.metric_handler.calculate_metrics(
-            preds_patches=torch.cat(all_pred_patches, dim=0),
-            targets_patches=torch.cat(all_target_patches, dim=0),
+            preds_patches=torch.cat(accumulated_preds, dim=0),
+            targets_patches=torch.cat(accumulated_targets, dim=0),
         )
         metrics["Loss"] = running_loss / total
         return metrics
