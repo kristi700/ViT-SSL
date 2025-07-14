@@ -74,6 +74,7 @@ class DINOTrainer(BaseTrainer):
         self,
         epoch: int,
     ):
+        # TODO - in train + val, we only take the last student + teacher output!!!
         self.model.train()
         total, running_loss = 0, 0
         num_global_views = self.train_loader.dataset.num_global_views
