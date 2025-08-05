@@ -1,5 +1,6 @@
 torch
 torcheval
+torcheval-nightly
 torchvision
 pytorch-ignite
 omegaconf

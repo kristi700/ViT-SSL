@@ -79,8 +79,8 @@ class DINOTrainer(BaseTrainer):
         num_global_views = self.train_loader.dataset.num_global_views
         current_teach_momentum = self.momentum_schedule.get_momentum(epoch)
 
-        metric_accumulation_steps = 50
-        accumulated_teacher, accumulated_student =[], []
+        metrics = {}
+        metrics_count = 0
 
         for idx, inputs in enumerate(self.train_loader):
             inputs = [x.to(self.device) for x in inputs]
@@ -111,17 +111,27 @@ class DINOTrainer(BaseTrainer):
 
             running_loss += loss.item()
             total += 1
-            if idx % metric_accumulation_steps == 0 or idx == len(self.train_loader) - 1:
-                accumulated_teacher.append(teacher_output.detach().cpu())
-                accumulated_student.append(student_output.detach().cpu())
-
+            teacher_cpu = teacher_output.detach().cpu()
+            student_cpu = student_output.detach().cpu()
+            center_cpu = self.model.center.detach().cpu()
+            batch_metrics = self.metric_handler.calculate_metrics(
+                center=center_cpu,
+                teacher_distribution=teacher_cpu,
+                student_distribution=student_cpu,
+            )
+            if metrics_count == 0:
+                metrics = batch_metrics.copy()
+            else:
+                for key, value in batch_metrics.items():
+                    if key in metrics:
+                        metrics[key] = (metrics[key] * metrics_count + value) / (metrics_count + 1)
+                    else:
+                        metrics[key] = value
+            
+            metrics_count += 1
+            
+            del teacher_cpu, student_cpu, center_cpu, batch_metrics
             self.train_logger.train_log_step(epoch, idx)
-
-        metrics = self.metric_handler.calculate_metrics(
-            center=self.model.center,
-            teacher_distribution=torch.cat(accumulated_teacher, dim=1),
-            student_distribution=torch.cat(accumulated_student, dim=1),
-        )
         metrics["Loss"] = running_loss / total
         return metrics
 
@@ -129,7 +139,9 @@ class DINOTrainer(BaseTrainer):
         self.model.eval()
         total, running_loss = 0, 0
         num_global_views = self.val_loader.dataset.num_global_views
-        accumulated_teacher, accumulated_student = [], []
+    
+        metrics = {}
+        metrics_count = 0
         
         with torch.no_grad():
             for idx, inputs in enumerate(self.val_loader):
@@ -149,17 +161,28 @@ class DINOTrainer(BaseTrainer):
                     )
                     loss = self.criterion(teacher_output, student_output, self.model.center)
                 
-                accumulated_teacher.append(teacher_output.detach().cpu())
-                accumulated_student.append(student_output.detach().cpu())
-                running_loss += loss.item()
+                teacher_cpu = teacher_output.detach().cpu()
+                student_cpu = student_output.detach().cpu()
+                center_cpu = self.model.center.detach().cpu()
+                batch_metrics = self.metric_handler.calculate_metrics(
+                    center=center_cpu,
+                    teacher_distribution=teacher_cpu,
+                    student_distribution=student_cpu,
+                )
+                if metrics_count == 0:
+                    metrics = batch_metrics.copy()
+                else:
+                    for key, value in batch_metrics.items():
+                        if key in metrics:
+                            metrics[key] = (metrics[key] * metrics_count + value) / (metrics_count + 1)
+                        else:
+                            metrics[key] = value
+                
+                metrics_count += 1
                 total += 1
+                running_loss += loss.item()
                 self.train_logger.val_log_step(idx)
 
-        metrics = self.metric_handler.calculate_metrics(
-            center=self.model.center,
-            teacher_distribution=torch.cat(accumulated_teacher, dim=1),
-            student_distribution=torch.cat(accumulated_student, dim=1),
-        )
         metrics["Loss"] = running_loss / total
         return metrics
 

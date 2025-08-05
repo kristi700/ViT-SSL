@@ -1,13 +1,24 @@
 import torch
-
-from ignite.metrics import SSIM
-from typing import List, Dict, Any
-from torcheval.metrics import PeakSignalNoiseRatio
-
+from typing import List, Dict, Any, Optional
+from torcheval.metrics import (
+    PeakSignalNoiseRatio,
+    MulticlassAccuracy,
+    MulticlassF1Score,
+    MulticlassRecall,
+    MulticlassPrecision,
+    Mean,
+)
+from torcheval.metrics import StructuralSimilarity
 
 class MetricHandler:
+    """
+    Handles metric computation using TorchEval for memory efficiency and consistency.
+    All metrics are reset after each computation to prevent memory leaks.
+    """
+
     def __init__(self, config: Dict[str, Any]):
         active_metric_names = config.get("metrics", [])
+        self.device = config.get("device", "cpu")
         self._metric_calculators = self._get_metric_calculators(active_metric_names)
 
     def _get_metric_calculators(self, active_metric_names: List[str]):
@@ -22,116 +33,145 @@ class MetricHandler:
             "CosineSim": CosineSimMetric,
             "PSNR": PSNRMetric,
             "SSIM": SSIMMetric,
-            "Accuracy": Accuracy,
-            "F1Score": F1Score,
-            "Recall": Recall,
-            "Precision": Precision,
+            "Accuracy": AccuracyMetric,
+            "F1Score": F1ScoreMetric,
+            "Recall": RecallMetric,
+            "Precision": PrecisionMetric,
         }
         calculators = {}
         for name in active_metric_names:
             if name not in registry:
                 raise ValueError(f"Unknown metric '{name}'")
-            calculators[name] = registry[name]()
+            calculators[name] = registry[name](device=self.device)
         return calculators
 
     def calculate_metrics(self, **kwargs):
+        """
+        Calculate all active metrics and reset their states to prevent memory leaks.
+        """
         latest = {}
         for name, calc in self._metric_calculators.items():
-            latest[name] = calc.compute(**kwargs)
+            try:
+                latest[name] = calc.compute(**kwargs)
+
+                calc.reset()
+            except Exception as e:
+                print(f"Error computing metric {name}: {e}")
+                latest[name] = float("nan")
         return latest
 
     @property
     def metric_names(self) -> List[str]:
         return list(self._metric_calculators.keys())
 
-
-# ------------------------------------------------------------------------------------------
-# -----------------------------------------METRICS------------------------------------------
-# ------------------------------------------------------------------------------------------
+    def reset_all_metrics(self):
+        """Reset all metrics to clear accumulated state."""
+        for calc in self._metric_calculators.values():
+            calc.reset()
 
 
 class BaseMetric:
+    """Base class for all metrics with consistent interface."""
+
+    def __init__(self, device: str = "cpu"):
+        self.device = device
+        self._metric = None
+
     def compute(self, **kwargs) -> float:
         raise NotImplementedError
 
+    def reset(self):
+        """Reset metric state if applicable."""
+        if hasattr(self._metric, "reset"):
+            self._metric.reset()
+
 
 class CenterNormMetric(BaseMetric):
-    """
-    Calculates the L2 norm of center
-    """
+    """Calculates the L2 norm of center"""
 
     def compute(self, *, center: torch.Tensor, **kwargs) -> float:
         return torch.linalg.norm(center).item()
 
+    def reset(self):
+        pass
+
 
 class TeacherMeanMetric(BaseMetric):
-    """
-    Calculates the mean of the given distribution
-    """
+    """Calculates the mean of the teacher distribution using TorchEval"""
+
+    def __init__(self, device: str = "cpu"):
+        super().__init__(device)
+        self._metric = Mean(device=torch.device(device))
 
     def compute(self, *, teacher_distribution: torch.Tensor, **kwargs) -> float:
         flat = torch.flatten(teacher_distribution)
-        return flat.mean().item()
+        self._metric.update(flat)
+        result = self._metric.compute().item()
+        return result
 
 
 class TeacherSTDMetric(BaseMetric):
-    """
-    Calculates the std of the given distribution
-    """
+    """Calculates the std of the teacher distribution"""
 
     def compute(self, *, teacher_distribution: torch.Tensor, **kwargs) -> float:
         flat = torch.flatten(teacher_distribution)
         return flat.std().item()
+
+    def reset(self):
+        pass
 
 
 class TeacherVarMetric(BaseMetric):
-    """
-    Calculates the var of the given distribution
-    """
+    """Calculates the var of the teacher distribution"""
 
     def compute(self, *, teacher_distribution: torch.Tensor, **kwargs) -> float:
         flat = torch.flatten(teacher_distribution)
         return flat.var().item()
 
+    def reset(self):
+        pass
+
 
 class StudentMeanMetric(BaseMetric):
-    """
-    Calculates the mean of the given distribution
-    """
+    """Calculates the mean of the student distribution using TorchEval"""
+
+    def __init__(self, device: str = "cpu"):
+        super().__init__(device)
+        self._metric = Mean(device=torch.device(device))
 
     def compute(self, *, student_distribution: torch.Tensor, **kwargs) -> float:
         flat = torch.flatten(student_distribution)
-        return flat.mean().item()
+        self._metric.update(flat)
+        result = self._metric.compute().item()
+        return result
 
 
 class StudentSTDMetric(BaseMetric):
-    """
-    Calculates the std of the given distribution
-    """
+    """Calculates the std of the student distribution"""
 
     def compute(self, *, student_distribution: torch.Tensor, **kwargs) -> float:
         flat = torch.flatten(student_distribution)
         return flat.std().item()
 
+    def reset(self):
+        pass
+
 
 class StudentVarMetric(BaseMetric):
-    """
-    Calculates the var of the given distribution
-    """
+    """Calculates the var of the student distribution"""
 
     def compute(self, *, student_distribution: torch.Tensor, **kwargs) -> float:
         flat = torch.flatten(student_distribution)
         return flat.var().item()
+
+    def reset(self):
+        pass
 
 
 class CosineSimMetric(BaseMetric):
     """
-    Computes cosine similarity between the teacher's outputs and the student's.
-        args:
-            - teacher_output - num_global_views * batch_size * dim
-            - student_output - num_all_views * batch_size * dim
-
-    Implemented as in: https://docs.pytorch.org/docs/stable/generated/torch.nn.CosineSimilarity.html
+    Computes cosine similarity between teacher and student distributions.
+    Optimized version using torch operations.
     """
 
     def compute(
@@ -141,115 +181,180 @@ class CosineSimMetric(BaseMetric):
         student_distribution: torch.Tensor,
         **kwargs,
     ) -> float:
-        teacher_normed = torch.linalg.norm(teacher_distribution, dim=-1)
-        student_normed = torch.linalg.norm(student_distribution, dim=-1)
 
-        teacher_exp = teacher_distribution.unsqueeze(1)
-        student_exp = student_distribution.unsqueeze(0)
+        if teacher_distribution.device != student_distribution.device:
+            student_distribution = student_distribution.to(teacher_distribution.device)
 
-        dot_product = (teacher_exp * student_exp).sum(dim=-1)
+        teacher_flat = teacher_distribution.view(teacher_distribution.size(0), -1)
+        student_flat = student_distribution.view(student_distribution.size(0), -1)
 
-        teacher_normed = teacher_normed.unsqueeze(1)
-        student_normed = student_normed.unsqueeze(0)
+        cos_sim = torch.nn.functional.cosine_similarity(
+            teacher_flat, student_flat, dim=1
+        )
+        return cos_sim.mean().item()
 
-        cosine_similarities = dot_product / (teacher_normed * student_normed + 1e-8)
-        return cosine_similarities.mean()
+    def reset(self):
+        pass
 
 
 class PSNRMetric(BaseMetric):
-    """
-    Calculates PSNR Metric
-    """
+    """Calculates PSNR Metric using TorchEval"""
 
-    def __init__(self):
-        self.psnr = PeakSignalNoiseRatio(data_range=1.0)
+    def __init__(self, device: str = "cpu"):
+        super().__init__(device)
+        self._metric = PeakSignalNoiseRatio(data_range=1.0, device=torch.device(device))
 
     def compute(
         self, *, preds_patches: torch.Tensor, targets_patches: torch.Tensor, **kwargs
     ) -> float:
-        self.psnr.reset()
-        self.psnr.update(preds_patches, targets_patches)
-        return self.psnr.compute()
+
+        preds_patches = preds_patches.to(self.device)
+        targets_patches = targets_patches.to(self.device)
+
+        self._metric.update(preds_patches, targets_patches)
+        result = self._metric.compute().item()
+        return result
 
 
 class SSIMMetric(BaseMetric):
     """
-    Calculates SSIM Metric
+    Calculates SSIM Metric using TorchEval functional interface
+    to avoid state accumulation issues.
     """
-
-    def __init__(self):
-        self.ssim = SSIM(data_range=1.0)
 
     def compute(
         self, *, preds_patches: torch.Tensor, targets_patches: torch.Tensor, **kwargs
     ) -> float:
-        self.ssim.update((preds_patches, targets_patches))
-        return self.ssim.compute()
+
+        if preds_patches.device != targets_patches.device:
+            targets_patches = targets_patches.to(preds_patches.device)
+
+        ssim_value = StructuralSimilarity(
+            preds_patches, targets_patches, data_range=1.0
+        )
+        return ssim_value.item()
+
+    def reset(self):
+        pass
 
 
-class Accuracy(BaseMetric):
-    """
-    Calculates Accuracy Metric
-    """
+class AccuracyMetric(BaseMetric):
+    """Calculates Accuracy using TorchEval"""
 
-    def compute(self, *, correct: int, total: int, **kwargs) -> float:
-        return correct / total
-    
-class F1Score(BaseMetric):
-    """
-    Calculates F1 score.
-    """
+    def __init__(self, device: str = "cpu", num_classes: Optional[int] = None):
+        super().__init__(device)
+        self.num_classes = num_classes
+        self._metric = MulticlassAccuracy(device=torch.device(device))
 
-    def compute(self, *, y_pred: torch.Tensor, y_true: torch.Tensor) -> float:
-        num_classes = torch.max(y_true).item() + 1
-        f1s = []
+    def compute(self, *, y_pred: torch.Tensor, y_true: torch.Tensor, **kwargs) -> float:
+        if "correct" in kwargs and "total" in kwargs:
+            return kwargs["correct"] / kwargs["total"]
 
-        for cls in range(num_classes):
-            tp = ((y_pred == cls) & (y_true == cls)).sum().item()
-            fp = ((y_pred == cls) & (y_true != cls)).sum().item()
-            fn = ((y_pred != cls) & (y_true == cls)).sum().item()
+        y_pred = y_pred.to(self.device)
+        y_true = y_true.to(self.device)
 
-            precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-            recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-            f1 = (
-                2 * precision * recall / (precision + recall)
-                if (precision + recall) > 0
-                else 0.0
+        self._metric.update(y_pred, y_true)
+        result = self._metric.compute().item()
+        return result
+
+
+class F1ScoreMetric(BaseMetric):
+    """Calculates F1 Score using TorchEval"""
+
+    def __init__(
+        self,
+        device: str = "cpu",
+        num_classes: Optional[int] = None,
+        average: str = "macro",
+    ):
+        super().__init__(device)
+        self.num_classes = num_classes
+        self._metric = MulticlassF1Score(
+            num_classes=num_classes, average=average, device=torch.device(device)
+        )
+
+    def compute(self, *, y_pred: torch.Tensor, y_true: torch.Tensor, **kwargs) -> float:
+        if self.num_classes is None:
+            self.num_classes = (
+                max(torch.max(y_true).item(), torch.max(y_pred).item()) + 1
             )
-            f1s.append(f1)
+            self._metric = MulticlassF1Score(
+                num_classes=self.num_classes,
+                average="macro",
+                device=torch.device(self.device),
+            )
 
-        return sum(f1s) / len(f1s) if f1s else 0.0
+        y_pred = y_pred.to(self.device)
+        y_true = y_true.to(self.device)
 
-class Recall(BaseMetric):
-    """
-    Calculates Recall
-    """
+        self._metric.update(y_pred, y_true)
+        result = self._metric.compute().item()
+        return result
 
-    def compute(self, *, y_pred: torch.Tensor, y_true: torch.Tensor) -> float:
-        num_classes = torch.max(y_true).item() + 1
-        recalls = []
 
-        for cls in range(num_classes):
-            tp = ((y_pred == cls) & (y_true == cls)).sum().item()
-            fn = ((y_pred != cls) & (y_true == cls)).sum().item()
+class RecallMetric(BaseMetric):
+    """Calculates Recall using TorchEval"""
 
-            recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-            recalls.append(recall)
+    def __init__(
+        self,
+        device: str = "cpu",
+        num_classes: Optional[int] = None,
+        average: str = "macro",
+    ):
+        super().__init__(device)
+        self.num_classes = num_classes
+        self._metric = MulticlassRecall(
+            num_classes=num_classes, average=average, device=torch.device(device)
+        )
 
-        return sum(recalls) / len(recalls) if recalls else 0.0
+    def compute(self, *, y_pred: torch.Tensor, y_true: torch.Tensor, **kwargs) -> float:
+        if self.num_classes is None:
+            self.num_classes = (
+                max(torch.max(y_true).item(), torch.max(y_pred).item()) + 1
+            )
+            self._metric = MulticlassRecall(
+                num_classes=self.num_classes,
+                average="macro",
+                device=torch.device(self.device),
+            )
 
-class Precision(BaseMetric):
-    """
-    Calculates Precision
-    """
+        y_pred = y_pred.to(self.device)
+        y_true = y_true.to(self.device)
 
-    def compute(self, *, y_pred: torch.Tensor, y_true: torch.Tensor) -> float:
-        num_classes = torch.max(y_true).item() + 1
-        precisions = []
+        self._metric.update(y_pred, y_true)
+        result = self._metric.compute().item()
+        return result
 
-        for cls in range(num_classes):
-            tp = ((y_pred == cls) & (y_true == cls)).sum().item()
-            fp = ((y_pred == cls) & (y_true != cls)).sum().item()
 
-            precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-            precisions.append(precision)
+class PrecisionMetric(BaseMetric):
+    """Calculates Precision using TorchEval"""
+
+    def __init__(
+        self,
+        device: str = "cpu",
+        num_classes: Optional[int] = None,
+        average: str = "macro",
+    ):
+        super().__init__(device)
+        self.num_classes = num_classes
+        self._metric = MulticlassPrecision(
+            num_classes=num_classes, average=average, device=torch.device(self.device)
+        )
+
+    def compute(self, *, y_pred: torch.Tensor, y_true: torch.Tensor, **kwargs) -> float:
+        if self.num_classes is None:
+            self.num_classes = (
+                max(torch.max(y_true).item(), torch.max(y_pred).item()) + 1
+            )
+            self._metric = MulticlassPrecision(
+                num_classes=self.num_classes,
+                average="macro",
+                device=torch.device(self.device),
+            )
+
+        y_pred = y_pred.to(self.device)
+        y_true = y_true.to(self.device)
+
+        self._metric.update(y_pred, y_true)
+        result = self._metric.compute().item()
+        return result
