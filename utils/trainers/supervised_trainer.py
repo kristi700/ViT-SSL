@@ -25,15 +25,17 @@ class SupervisedTrainer(BaseTrainer):
     ):
         self.model.train()
         running_loss  = 0
-        all_preds, all_labels = [], []
+        total = 0
+        metrics = {}
+        metrics_count = 0
 
         for idx, (inputs, labels) in enumerate(self.train_loader):
             inputs, labels = inputs.to(self.device), labels.to(self.device)
 
             self.optimizer.zero_grad(set_to_none=True)
             with autocast(device_type="cuda", dtype=torch.bfloat16):
-                preds = self.model(inputs)
-                loss = self.criterion(preds, labels)
+                logits = self.model(inputs)
+                loss = self.criterion(logits, labels)
 
             self.scaler.scale(loss).backward()
             self.scaler.step(self.optimizer)
@@ -43,22 +45,42 @@ class SupervisedTrainer(BaseTrainer):
                 self.schedulers["warmup"].step()
 
             running_loss += loss.item() * inputs.size(0)
-            all_preds.append(preds.argmax(1).cpu())
-            all_labels.append(labels.cpu())
             self.train_logger.train_log_step(epoch, idx)
+            total += 1
+            preds_cpu = logits.argmax(1).detach().cpu()
+            labels_cpu = labels.detach().cpu()
+            batch_metrics = self.metric_handler.calculate_metrics(
+                correct=(preds_cpu == labels_cpu).sum().item(),
+                total=labels_cpu.size(0),
+                y_pred=preds_cpu,
+                y_true=labels_cpu,
+            )
 
-        y_pred = torch.cat(all_preds)
-        y_true = torch.cat(all_labels)
+            if metrics_count == 0:
+                metrics = batch_metrics.copy()
+            else:
+                for key, value in batch_metrics.items():
+                    if key in metrics:
+                        metrics[key] = (metrics[key] * metrics_count + value) / (
+                            metrics_count + 1
+                        )
+                    else:
+                        metrics[key] = value
 
-        metrics = self.metric_handler.calculate_metrics(correct=(y_pred == y_true).sum().item(), total=len(y_true), y_pred=y_pred, y_true=y_true)
-        metrics["Loss"] = running_loss / len(y_true)
+            metrics_count += 1
+
+            del preds_cpu, labels_cpu, batch_metrics
+        metrics["Loss"] = running_loss / total
         return metrics
 
     def validate(self):
         self.model.eval()
-        all_preds, all_labels = [], []
         running_loss = 0
-        
+        total = 0
+        all_preds, all_labels = [], []
+        metrics = {}
+        metrics_count = 0
+
         with torch.no_grad():
             for idx, (inputs, labels) in enumerate(self.val_loader):
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
@@ -69,15 +91,38 @@ class SupervisedTrainer(BaseTrainer):
 
                 running_loss += loss.item() * inputs.size(0)
                 self.train_logger.val_log_step(idx)
-                all_preds.append(logits.argmax(dim=1).cpu())
-                all_labels.append(labels.cpu())
+                total += 1
+
+                preds_cpu = logits.argmax(1).detach().cpu()
+                labels_cpu = labels.detach().cpu()
+                all_preds.append(preds_cpu)
+                all_labels.append(labels_cpu)
+                batch_metrics = self.metric_handler.calculate_metrics(
+                    correct=(preds_cpu == labels_cpu).sum().item(),
+                    total=labels_cpu.size(0),
+                    y_pred=preds_cpu,
+                    y_true=labels_cpu,
+                )
+
+                if metrics_count == 0:
+                    metrics = batch_metrics.copy()
+                else:
+                    for key, value in batch_metrics.items():
+                        if key in metrics:
+                            metrics[key] = (metrics[key] * metrics_count + value) / (
+                                metrics_count + 1
+                            )
+                        else:
+                            metrics[key] = value
+
+                metrics_count += 1
+
+                del preds_cpu, labels_cpu, batch_metrics
 
         y_pred = torch.cat(all_preds)
         y_true = torch.cat(all_labels)
-
-        metrics = self.metric_handler.calculate_metrics(correct=(y_pred == y_true).sum().item(), total=len(y_true), y_pred=y_pred, y_true=y_true)
-        metrics["Loss"] = running_loss / len(y_true)
-        return metrics, torch.cat(all_preds), torch.cat(all_labels)
+        metrics["Loss"] = running_loss / total
+        return metrics, y_pred, y_true
 
     def fit(self, num_epochs: int):
         end_epoch = self.start_epoch + num_epochs

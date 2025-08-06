@@ -223,6 +223,9 @@ class SSIMMetric(BaseMetric):
     Calculates SSIM Metric using TorchEval functional interface
     to avoid state accumulation issues.
     """
+    def __init__(self, device: str = "cpu"):
+        super().__init__(device)
+        self._metric = StructuralSimilarity(device=torch.device(device))
 
     def compute(
         self, *, preds_patches: torch.Tensor, targets_patches: torch.Tensor, **kwargs
@@ -231,13 +234,10 @@ class SSIMMetric(BaseMetric):
         if preds_patches.device != targets_patches.device:
             targets_patches = targets_patches.to(preds_patches.device)
 
-        ssim_value = StructuralSimilarity(
-            preds_patches, targets_patches, data_range=1.0
-        )
-        return ssim_value.item()
-
-    def reset(self):
-        pass
+        self._metric.update(preds_patches, targets_patches)
+        result = self._metric.compute().item()
+        self._metric.reset()
+        return result
 
 
 class AccuracyMetric(BaseMetric):

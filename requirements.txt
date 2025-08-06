@@ -15,3 +15,4 @@ scikit-learn
 umap-learn
 seaborn
 pillow
+scikit-image==0.19.3

@@ -178,6 +178,7 @@ class DINOTrainer(BaseTrainer):
                         else:
                             metrics[key] = value
                 
+                del teacher_cpu, student_cpu, center_cpu, batch_metrics
                 metrics_count += 1
                 total += 1
                 running_loss += loss.item()

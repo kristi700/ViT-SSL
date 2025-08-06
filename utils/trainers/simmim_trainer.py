@@ -4,6 +4,7 @@ import torch
 import logging
 
 from torch.amp import autocast
+import torch.nn.functional as F
 
 from .base_trainer import BaseTrainer
 
@@ -56,15 +57,17 @@ class SimMIMTrainer(BaseTrainer):
     ):
         self.model.train()
         total, running_loss = 0, 0
-        metric_accumulation_steps = 50
-        accumulated_preds, accumulated_targets =[], []
-        # TODO - fully reconstructed image might be needed for metrics!!
+        metrics = {}
+        metrics_count = 0
+        
         for idx, inputs in enumerate(self.train_loader):
             inputs = inputs.to(self.device)
             self.optimizer.zero_grad(set_to_none=True)
 
             with autocast(device_type="cuda", dtype=torch.bfloat16):
-                preds_flat, targets_flat = self.model(inputs)
+                preds_flat, targets_flat, bool_mask= self.model(
+                inputs, return_bool_mask=True
+                )
                 loss = self.criterion(preds_flat, targets_flat)
             
             self.scaler.scale(loss).backward()
@@ -76,63 +79,96 @@ class SimMIMTrainer(BaseTrainer):
 
             running_loss += loss.item()
             total += 1
+            patches = torch.nn.functional.unfold(
+                inputs, kernel_size=self.patch_size, stride=self.patch_size
+            ).transpose(1, 2)
 
-            if idx % metric_accumulation_steps == 0 or idx == len(self.train_loader) - 1:
-                preds_patches = torch.clamp(
-                    preds_flat.reshape(
-                        -1, self.in_channels, self.patch_size, self.patch_size
-                    ),
-                    0,
-                    1,
-                )
-                targets_patches = targets_flat.reshape(
-                    -1, self.in_channels, self.patch_size, self.patch_size
-                )
-                accumulated_preds.append(preds_patches.detach().cpu())
-                accumulated_targets.append(targets_patches.detach().cpu())
+            mask_2d = bool_mask.squeeze(-1).to(torch.bool)
+            N, L, D = patches.shape
+            patches_2d = patches.reshape(N * L, D)
+            mask_1d = mask_2d.reshape(N * L) 
+            preds_clamped = torch.clamp(preds_flat, 0, 1)
+
+            preds_clamped = torch.clamp(preds_flat, 0, 1).to(patches_2d.dtype)
+            patches_2d[mask_1d] = preds_clamped
+            patches = patches_2d.view(N, L, D)
+
+            reconstructed = torch.nn.functional.fold(
+                patches.transpose(1, 2),
+                output_size=(inputs.shape[2], inputs.shape[3]),
+                kernel_size=self.patch_size,
+                stride=self.patch_size,
+            ).clamp_(0, 1)
+            batch_metrics = self.metric_handler.calculate_metrics(
+                preds_patches=inputs.detach().cpu(),
+                targets_patches=reconstructed.detach().cpu(),
+            )
+            if metrics_count == 0:
+                metrics = batch_metrics.copy()
+            else:
+                for key, value in batch_metrics.items():
+                    if key in metrics:
+                        metrics[key] = (metrics[key] * metrics_count + value) / (metrics_count + 1)
+                    else:
+                        metrics[key] = value
             self.train_logger.train_log_step(epoch, idx)
-
-        metrics = self.metric_handler.calculate_metrics(
-            preds_patches=torch.cat(accumulated_preds, dim=0),
-            targets_patches=torch.cat(accumulated_targets, dim=0),
-        )
         metrics["Loss"] = running_loss / total
         return metrics
 
     def validate(self):
         self.model.eval()
         total, running_loss = 0, 0
-        accumulated_preds, accumulated_targets =[], []
+        metrics = {}
+        metrics_count = 0
 
         with torch.no_grad():
             for idx, inputs in enumerate(self.val_loader):
                 inputs = inputs.to(self.device)
 
                 with autocast(device_type="cuda", dtype=torch.bfloat16):
-                    preds_flat, targets_flat = self.model(inputs)
+                    preds_flat, targets_flat, bool_mask= self.model(
+                    inputs, return_bool_mask=True
+                    )
                     loss = self.criterion(preds_flat, targets_flat)
     
                 running_loss += loss.item()
                 total += 1
 
-                preds_patches = torch.clamp(
-                    preds_flat.reshape(
-                        -1, self.in_channels, self.patch_size, self.patch_size
-                    ),
-                    0,
-                    1,
+                patches = torch.nn.functional.unfold(
+                    inputs, kernel_size=self.patch_size, stride=self.patch_size
+                ).transpose(1, 2)
+
+                mask_2d = bool_mask.squeeze(-1).to(torch.bool)
+                N, L, D = patches.shape
+                patches_2d = patches.reshape(N * L, D)
+                mask_1d = mask_2d.reshape(N * L)
+                preds_clamped = torch.clamp(preds_flat, 0, 1) 
+
+                preds_clamped = torch.clamp(preds_flat, 0, 1).to(patches_2d.dtype)
+                patches_2d[mask_1d] = preds_clamped
+                patches = patches_2d.view(N, L, D)
+
+                reconstructed = torch.nn.functional.fold(
+                    patches.transpose(1, 2),
+                    output_size=(inputs.shape[2], inputs.shape[3]),
+                    kernel_size=self.patch_size,
+                    stride=self.patch_size,
+                ).clamp_(0, 1)
+                batch_metrics = self.metric_handler.calculate_metrics(
+                    preds_patches=inputs.detach().cpu(),
+                    targets_patches=reconstructed.detach().cpu(),
                 )
-                targets_patches = targets_flat.reshape(
-                    -1, self.in_channels, self.patch_size, self.patch_size
-                )
-                accumulated_preds.append(preds_patches.detach().cpu())
-                accumulated_targets.append(targets_patches.detach().cpu())
+                if metrics_count == 0:
+                    metrics = batch_metrics.copy()
+                else:
+                    for key, value in batch_metrics.items():
+                        if key in metrics:
+                            metrics[key] = (metrics[key] * metrics_count + value) / (metrics_count + 1)
+                        else:
+                             metrics[key] = value
                 self.train_logger.val_log_step(idx)
 
-        metrics = self.metric_handler.calculate_metrics(
-            preds_patches=torch.cat(accumulated_preds, dim=0),
-            targets_patches=torch.cat(accumulated_targets, dim=0),
-        )
+
         metrics["Loss"] = running_loss / total
         return metrics
 

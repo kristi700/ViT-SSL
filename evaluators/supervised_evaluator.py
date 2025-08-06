@@ -100,7 +100,7 @@ def run_evaluation(
     preds: Optional[torch.Tensor] = None,
     labels: Optional[torch.Tensor] = None,
 ):
-    """Run unsupervised evaluation based on ``config.eval.mode``.
+    """Run supervised evaluation based on ``config.eval.mode``.
 
     Features are extracted only once and reused for the selected evaluation.
     """

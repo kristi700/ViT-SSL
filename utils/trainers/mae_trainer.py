@@ -61,8 +61,8 @@ class MAETrainer(BaseTrainer):
     ):
         self.model.train()
         total, running_loss = 0, 0
-        metric_accumulation_steps = 50
-        accumulated_reconstructed, accumulated_inputs =[], []
+        metrics = {}
+        metrics_count = 0
 
         for idx, inputs in enumerate(self.train_loader):
             inputs = inputs.to(self.device)
@@ -82,28 +82,35 @@ class MAETrainer(BaseTrainer):
             running_loss += loss.item()
             total += 1
 
-            if idx % metric_accumulation_steps == 0 or idx == len(self.train_loader) - 1:
-                reconstructed_images = F.fold(
-                    preds.transpose(1, 2),
-                    output_size=(inputs.shape[2], inputs.shape[3]),
-                    kernel_size=(self.patch_size, self.patch_size),
-                    stride=(self.patch_size, self.patch_size)
-                )
-                accumulated_reconstructed.append(reconstructed_images.detach().cpu())
-                accumulated_inputs.append(inputs.detach().cpu())
+            reconstructed_images = F.fold(
+                preds.transpose(1, 2),
+                output_size=(inputs.shape[2], inputs.shape[3]),
+                kernel_size=(self.patch_size, self.patch_size),
+                stride=(self.patch_size, self.patch_size)
+            )
+            batch_metrics = self.metric_handler.calculate_metrics(
+                preds_patches=reconstructed_images.detach().cpu(),
+                targets_patches=inputs.detach().cpu(),
+            )
+            if metrics_count == 0:
+                metrics = batch_metrics.copy()
+            else:
+                for key, value in batch_metrics.items():
+                    if key in metrics:
+                        metrics[key] = (metrics[key] * metrics_count + value) / (metrics_count + 1)
+                    else:
+                        metrics[key] = value
+            
             self.train_logger.train_log_step(epoch, idx)
 
-        metrics = self.metric_handler.calculate_metrics(
-            preds_patches=torch.cat(accumulated_reconstructed, dim=0),
-            targets_patches=torch.cat(accumulated_inputs, dim=0),
-        )
         metrics["Loss"] = running_loss / total
         return metrics
 
     def validate(self):
         self.model.eval()
         total, running_loss = 0, 0
-        all_reconstructed_images, all_inputs = [], []
+        metrics = {}
+        metrics_count = 0
 
         with torch.no_grad():
             for idx, inputs in enumerate(self.val_loader):
@@ -122,16 +129,20 @@ class MAETrainer(BaseTrainer):
                     kernel_size=(self.patch_size, self.patch_size),
                     stride=(self.patch_size, self.patch_size)
                 )
-            
+                batch_metrics = self.metric_handler.calculate_metrics(
+                    preds_patches=reconstructed_images.detach().cpu(),
+                    targets_patches=inputs.detach().cpu(),
+                )
+                if metrics_count == 0:
+                    metrics = batch_metrics.copy()
+                else:
+                    for key, value in batch_metrics.items():
+                        if key in metrics:
+                            metrics[key] = (metrics[key] * metrics_count + value) / (metrics_count + 1)
+                        else:
+                            metrics[key] = value
+                    self.train_logger.val_log_step(idx)
 
-                all_reconstructed_images.append(reconstructed_images.detach().cpu())
-                all_inputs.append(inputs.detach().cpu())
-                self.train_logger.val_log_step(idx)
-
-        metrics = self.metric_handler.calculate_metrics(
-            preds_patches=torch.cat(all_reconstructed_images, dim=0),
-            targets_patches=torch.cat(all_inputs, dim=0),
-        )
         metrics["Loss"] = running_loss / total
         return metrics
 
