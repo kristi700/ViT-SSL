@@ -141,7 +141,7 @@ class MAETrainer(BaseTrainer):
                             metrics[key] = (metrics[key] * metrics_count + value) / (metrics_count + 1)
                         else:
                             metrics[key] = value
-                    self.train_logger.val_log_step(idx)
+                self.train_logger.val_log_step(idx)
 
         metrics["Loss"] = running_loss / total
         return metrics
