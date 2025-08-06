@@ -188,10 +188,12 @@ class CosineSimMetric(BaseMetric):
         teacher_flat = teacher_distribution.view(teacher_distribution.size(0), -1)
         student_flat = student_distribution.view(student_distribution.size(0), -1)
 
-        cos_sim = torch.nn.functional.cosine_similarity(
-            teacher_flat, student_flat, dim=1
+        sim_mat = torch.nn.functional.cosine_similarity(
+            teacher_flat.unsqueeze(1),
+            student_flat.unsqueeze(0),
+            dim=-1,
         )
-        return cos_sim.mean().item()
+        return sim_mat.mean().item()
 
     def reset(self):
         pass
